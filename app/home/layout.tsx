@@ -1,13 +1,56 @@
 "use client";
 
 import Link from "next/link";
-
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function HomeLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+
+    // Redirect unauthenticated users to the landing page
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            router.replace("/");
+        }
+    }, [status, router]);
+
+    // Show a full-screen loading state while session resolves
+    if (status === "loading") {
+        return (
+            <div style={{
+                minHeight: "100vh",
+                background: "#0d0d14",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "column",
+                gap: 16,
+            }}>
+                <div style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    border: "3px solid rgba(77,184,255,0.2)",
+                    borderTop: "3px solid #4db8ff",
+                    animation: "spin 0.8s linear infinite",
+                }} />
+                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Loading…</span>
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
+
+    // Don't render home content for unauthenticated users (redirect is in progress)
+    if (status === "unauthenticated") {
+        return null;
+    }
+
     return (
         <div style={{ minHeight: "100vh", background: "#0d0d14", color: "#fff", fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
 
@@ -32,16 +75,74 @@ export default function HomeLayout({
                         ))}
                     </nav>
 
-                    {/* Right actions */}
+                    {/* Right actions — signed-in user info */}
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 18, cursor: "pointer" }}>🔍</span>
-                        <Link href="/"
-                            style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 999, border: "1px solid rgba(77,184,255,0.3)", background: "rgba(77,184,255,0.08)", color: "#4db8ff", textDecoration: "none", whiteSpace: "nowrap", transition: "background 0.2s" }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(77,184,255,0.16)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(77,184,255,0.55)"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(77,184,255,0.08)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(77,184,255,0.3)"; }}
+                        {session?.user && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                {/* Avatar */}
+                                {session.user.image ? (
+                                    <img
+                                        src={session.user.image}
+                                        alt={session.user.name ?? "User"}
+                                        style={{
+                                            width: 32,
+                                            height: 32,
+                                            borderRadius: "50%",
+                                            border: "2px solid rgba(77,184,255,0.5)",
+                                            objectFit: "cover",
+                                        }}
+                                    />
+                                ) : (
+                                    <div style={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: "50%",
+                                        background: "linear-gradient(135deg, #4db8ff, #7c3aed)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: 13,
+                                        fontWeight: 700,
+                                        color: "#fff",
+                                    }}>
+                                        {session.user.name?.[0]?.toUpperCase() ?? "U"}
+                                    </div>
+                                )}
+                                {/* Name */}
+                                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", fontWeight: 500, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {session.user.name}
+                                </span>
+                                {/* Divider */}
+                                <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 16 }}>|</span>
+                            </div>
+                        )}
+
+                        {/* Sign Out button */}
+                        <button
+                            onClick={() => signOut({ callbackUrl: "/" })}
+                            style={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                padding: "7px 16px",
+                                borderRadius: 999,
+                                border: "1px solid rgba(255,80,80,0.3)",
+                                background: "rgba(255,80,80,0.08)",
+                                color: "#ff6b6b",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                transition: "background 0.2s, border-color 0.2s",
+                            }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.18)";
+                                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,80,80,0.55)";
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.08)";
+                                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,80,80,0.3)";
+                            }}
                         >
-                            ← Back to Home
-                        </Link>
+                            Sign Out
+                        </button>
                     </div>
                 </div>
             </header>

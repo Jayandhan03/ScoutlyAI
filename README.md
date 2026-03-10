@@ -1,3 +1,8 @@
+i have added the google oauth credentials and mongourl in .env.local, add the necessary code for the login feature and store the user data in my cluster
+
+also guide me for next step to signin new user with google account
+""
+
 Here is a simple breakdown of the tech stack you are using for your AI News application:
 
 1. Front-End (What the user sees and interacts with)

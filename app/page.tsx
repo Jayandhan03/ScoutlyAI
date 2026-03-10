@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 // Animated waveform bars for the hero audio visual
 function Waveform() {
@@ -23,6 +24,7 @@ function Waveform() {
 
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
+  const { data: session, status } = useSession();
   useEffect(() => setMounted(true), []);
 
   return (
@@ -42,10 +44,49 @@ export default function LandingPage() {
           </nav>
 
           <div className="landing-nav-actions">
-            <a href="#" className="nav-login">Log In</a>
-            <Link href="/home" className="nav-cta">
-              Open App →
-            </Link>
+            {status === "loading" ? null : session ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  {session.user?.image && (
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name ?? "User"}
+                      style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #7c3aed" }}
+                    />
+                  )}
+                  <span style={{ fontSize: "0.85rem", color: "#d1d5db" }}>{session.user?.name}</span>
+                  <button
+                    onClick={() => signOut()}
+                    className="nav-login"
+                    style={{ cursor: "pointer", background: "none", border: "none", color: "inherit" }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+                <Link href="/home" className="nav-cta">
+                  Open App →
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  id="google-signin-btn"
+                  onClick={() => signIn("google")}
+                  className="nav-login"
+                  style={{ cursor: "pointer", background: "none", border: "none", color: "inherit" }}
+                >
+                  Log In
+                </button>
+                <button
+                  id="google-signup-btn"
+                  onClick={() => signIn("google")}
+                  className="nav-cta"
+                  style={{ cursor: "pointer" }}
+                >
+                  Sign in with Google
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -68,9 +109,20 @@ export default function LandingPage() {
         </p>
 
         <div className="hero-actions">
-          <Link href="/home" className="btn-primary">
-            Get Started Now →
-          </Link>
+          {session ? (
+            <Link href="/home" className="btn-primary">
+              Open App →
+            </Link>
+          ) : (
+            <button
+              id="hero-google-signin-btn"
+              onClick={() => signIn("google")}
+              className="btn-primary"
+              style={{ cursor: "pointer" }}
+            >
+              Get Started Now →
+            </button>
+          )}
           <a href="#how-it-works" className="btn-secondary">
             View Sample
           </a>
