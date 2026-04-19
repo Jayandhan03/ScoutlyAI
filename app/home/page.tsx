@@ -4,53 +4,58 @@ import { useState, useRef } from "react";
 
 /* ─── Design tokens ─── */
 const C = {
-    cyan: "#4db8ff",
-    cyanDim: "rgba(77,184,255,0.08)",
-    cyanBorder: "rgba(77,184,255,0.25)",
-    cardBg: "rgba(255,255,255,0.025)",
-    cardBorder: "rgba(255,255,255,0.08)",
-    textMid: "rgba(255,255,255,0.55)",
-    textFaint: "rgba(255,255,255,0.35)",
+    accent: "var(--accent)",
+    accent2: "var(--accent-2)",
+    violet: "var(--violet)",
+    cyan: "var(--cyan)",
+    emerald: "var(--emerald)",
+    accentDim: "var(--accent-dim)",
+    accentBorder: "var(--accent-border)",
+    cardBg: "var(--bg-card)",
+    cardBorder: "var(--border-subtle)",
+    textPrimary: "var(--text-primary)",
+    textSecondary: "var(--text-secondary)",
+    textMuted: "var(--text-muted)",
 } as const;
 
 /* ─── Shared button styles ─── */
 const gradBtn: React.CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 8,
-    padding: "13px 28px", borderRadius: 999,
-    background: "linear-gradient(135deg, #4db8ff, #1a8cff)",
-    color: "#0d0d14", fontSize: 14, fontWeight: 700,
+    padding: "14px 30px", borderRadius: 999,
+    background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+    color: "#fff", fontSize: 14.5, fontWeight: 700,
     border: "none", cursor: "pointer", whiteSpace: "nowrap",
-    boxShadow: "0 0 20px rgba(77,184,255,0.3)",
+    boxShadow: "0 0 28px rgba(108,143,255,0.35), 0 4px 16px rgba(0,0,0,0.3)",
     transition: "transform 0.2s, box-shadow 0.2s",
     minWidth: 160, justifyContent: "center",
+    fontFamily: "var(--font-body)", letterSpacing: "0.01em",
 };
 const ghostBtn: React.CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 6,
-    padding: "13px 28px", borderRadius: 999,
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 600,
-    cursor: "pointer",
+    padding: "14px 28px", borderRadius: 999,
+    background: "rgba(255,255,255,0.04)", backdropFilter: "blur(8px)",
+    border: "1px solid var(--border-mid)",
+    color: "var(--text-secondary)", fontSize: 14.5, fontWeight: 600,
+    cursor: "pointer", fontFamily: "var(--font-body)",
+    transition: "background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s",
 };
 
 /* ─── API response types ─── */
 interface GenerateNewsRes {
     success: boolean;
-    news?: string;   // bullet-point text from run_agent()
+    news?: string;
     error?: string;
 }
 interface SummarizeRes {
     success: boolean;
     topic?: string;
     article_count?: number;
-    summary?: string;  // broadcast-script from LLM
+    summary?: string;
     error?: string;
 }
 
-// Pipeline step: 0=idle 1=generating 2=summarizing 3=audio 4=done
 type PipelineStep = 0 | 1 | 2 | 3 | 4;
 
-/** Parse bullet-point / numbered list text into individual strings */
 function parseBullets(text: string): string[] {
     const lines = text.split("\n");
     const out: string[] = [];
@@ -70,18 +75,27 @@ function parseBullets(text: string): string[] {
     return out.filter(b => b.length > 10);
 }
 
-/* ─── Spinner SVG ─── */
-function Spinner() {
+/* ─── Spinner ─── */
+function Spinner({ light = false }: { light?: boolean }) {
     return (
-        <svg width="14" height="14" viewBox="0 0 14 14"
-            style={{ animation: "spin 0.7s linear infinite", flexShrink: 0 }}>
-            <circle cx="7" cy="7" r="5" stroke="rgba(13,13,20,0.35)"
-                strokeWidth="2" fill="none" />
-            <path d="M7 2 A5 5 0 0 1 12 7" stroke="#0d0d14"
-                strokeWidth="2" fill="none" />
-        </svg>
+        <span style={{
+            display: "inline-block", width: 15, height: 15, borderRadius: "50%",
+            border: `2px solid ${light ? "rgba(255,255,255,0.2)" : "rgba(108,143,255,0.2)"}`,
+            borderTopColor: light ? "#fff" : "var(--accent)",
+            animation: "spin 0.7s linear infinite", flexShrink: 0,
+        }} />
     );
 }
+
+/* ─── Module cards config ─── */
+const MODULES = [
+    { icon: "🎛️", title: "Agent Studio", desc: "Customize your AI news agent — voice, personality, avatar, tone, and briefing style.", accent: "var(--accent)" },
+    { icon: "📡", title: "Feed Engine", desc: "Select categories, control summary depth, and define your signal filters.", accent: "var(--violet)" },
+    { icon: "🎙️", title: "Voice Delivery", desc: "Receive daily AI-generated voice briefings with your personalized news agent.", accent: "var(--cyan)" },
+    { icon: "💬", title: "Channels", desc: "Deliver briefings via WhatsApp, Email, and future integrations.", accent: "var(--emerald)" },
+    { icon: "📊", title: "Analytics", desc: "Track reading patterns, engagement, and content preferences over time.", accent: "#fb923c" },
+    { icon: "⚙️", title: "Settings", desc: "Manage account preferences, notification timing, and system controls.", accent: "#f472b6" },
+];
 
 /* ─── Main component ─── */
 export default function HomePage() {
@@ -94,16 +108,13 @@ export default function HomePage() {
     const [audioErr, setAudioErr] = useState<string | null>(null);
     const audioRef = useRef<HTMLAudioElement>(null);
 
-    /* ══ Pipeline ══ */
     const handleGenerate = async () => {
         if (!topic.trim()) return;
         const q = topic.trim();
 
-        // reset state
         setStep(1); setGenRes(null); setSumRes(null);
         setAudioUrl(null); setAudioErr(null);
 
-        // ── Step 1: Generate News (LangChain agent) ──────────────
         let gen: GenerateNewsRes;
         try {
             const r = await fetch("/api/generate-news", {
@@ -119,7 +130,6 @@ export default function HomePage() {
         setGenRes(gen);
         if (!gen.success) { setStep(0); return; }
 
-        // ── Step 2: Summarize News (broadcast-style LLM script) ──
         setStep(2);
         let sum: SummarizeRes;
         try {
@@ -134,13 +144,11 @@ export default function HomePage() {
         }
         setSumRes(sum);
 
-        // ── Step 3: Generate Audio (Google TTS / gTTS via FastAPI) ────────
         setStep(3);
         try {
             const r = await fetch("/api/news-audio", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                // gTTS: voice_id = BCP-47 language code, model_id ignored
                 body: JSON.stringify({ topic: q, limit: 5, voice_id: "en", model_id: "" }),
             });
             if (r.ok) {
@@ -148,10 +156,8 @@ export default function HomePage() {
                 const url = URL.createObjectURL(blob);
                 const disp = r.headers.get("Content-Disposition") ?? "";
                 const match = disp.match(/filename="?([^"]+)"?/);
-                // Backend streams MP3 (Google TTS / gTTS)
                 setAudioUrl(url);
                 setAudioName(match ? match[1] : `${q.replace(/\s+/g, "_")}_news.mp3`);
-
                 const articleCountHeader = r.headers.get("X-Article-Count");
                 if (articleCountHeader) {
                     const newArticleCount = parseInt(articleCountHeader, 10);
@@ -172,132 +178,161 @@ export default function HomePage() {
 
     const handleDownload = () => {
         if (!audioUrl) return;
-        Object.assign(document.createElement("a"),
-            { href: audioUrl, download: audioName }).click();
+        Object.assign(document.createElement("a"), { href: audioUrl, download: audioName }).click();
     };
 
-    /* ─── derived display values ─── */
     const isLoading = step > 0 && step < 4;
     const bullets = genRes?.news ? parseBullets(genRes.news) : [];
     const rawGenText = genRes?.news ?? "";
 
-    const progressWidth =
-        step === 1 ? "28%" : step === 2 ? "57%" : step === 3 ? "82%" : "100%";
+    const progressWidth = step === 1 ? "25%" : step === 2 ? "55%" : step === 3 ? "82%" : "100%";
     const progressLabel =
         step === 1 ? "Running news agent…"
             : step === 2 ? "Summarizing articles…"
                 : step === 3 ? "Generating audio briefing…"
-                    : "Done";
+                    : "Complete";
 
-    /* ─── Render ─── */
     return (
         <div style={{
-            maxWidth: 1100, margin: "0 auto", padding: "70px 24px 80px",
-            display: "flex", flexDirection: "column", gap: 72
+            maxWidth: 1100, margin: "0 auto", padding: "72px 28px 96px",
+            display: "flex", flexDirection: "column", gap: 80,
         }}>
 
             {/* ★ HERO */}
             <section style={{
                 textAlign: "center", display: "flex", flexDirection: "column",
-                alignItems: "center", gap: 20
+                alignItems: "center", gap: 24,
+                animation: "float-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
             }}>
-
+                {/* Badge */}
                 <div style={{
                     display: "inline-flex", alignItems: "center", gap: 8,
-                    fontSize: 12, fontWeight: 500, color: C.cyan, background: C.cyanDim,
-                    border: `1px solid ${C.cyanBorder}`, borderRadius: 999, padding: "5px 14px"
+                    fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "var(--emerald)", background: "var(--emerald-dim)",
+                    border: "1px solid rgba(52,211,153,0.25)", borderRadius: 999, padding: "6px 16px",
                 }}>
                     <span style={{
                         width: 6, height: 6, borderRadius: "50%",
-                        background: C.cyan, display: "inline-block"
+                        background: "var(--emerald)", boxShadow: "0 0 8px var(--emerald)",
+                        display: "inline-block", animation: "pulse-ring 2s ease-in-out infinite",
                     }} />
                     Personalized AI News Platform
                 </div>
 
+                {/* Title */}
                 <h1 style={{
-                    fontSize: "clamp(36px,6vw,60px)", fontWeight: 800,
-                    lineHeight: 1.1, letterSpacing: "-0.03em", margin: 0
+                    fontFamily: "var(--font-display)",
+                    fontSize: "clamp(40px, 6.5vw, 66px)", fontWeight: 800,
+                    lineHeight: 1.06, letterSpacing: "-0.04em", margin: 0,
+                    color: "var(--text-primary)",
                 }}>
                     Your intelligence.<br />
-                    <span style={{ color: C.cyan }}>Your signal.</span>
+                    <span style={{
+                        background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 55%, var(--cyan) 100%)",
+                        backgroundSize: "200% auto",
+                        WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                        backgroundClip: "text",
+                        animation: "shimmer 4s linear infinite",
+                    }}>Your signal.</span>
                 </h1>
 
+                {/* Subtitle */}
                 <p style={{
-                    fontSize: 16, lineHeight: 1.65, color: C.textMid,
-                    maxWidth: 540, margin: 0
+                    fontSize: 17, lineHeight: 1.72, color: C.textSecondary,
+                    maxWidth: 560, margin: 0,
                 }}>
                     YOUR News is a fully customizable AI-powered news layer. Build your own
                     news agent, define its voice and personality, and receive curated insights
-                    across the channels you use daily.
+                    across every channel you use daily.
                 </p>
 
+                {/* CTAs */}
                 <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
-                    <button style={gradBtn}>Customize Your Agent</button>
-                    <button style={ghostBtn}>Explore Demo →</button>
+                    <button style={gradBtn}
+                        onMouseEnter={e => {
+                            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
+                            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 44px rgba(108,143,255,0.6), 0 8px 20px rgba(0,0,0,0.3)";
+                        }}
+                        onMouseLeave={e => {
+                            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+                            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 28px rgba(108,143,255,0.35), 0 4px 16px rgba(0,0,0,0.3)";
+                        }}
+                    >Customize Your Agent</button>
+                    <button style={ghostBtn}
+                        onMouseEnter={e => {
+                            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)";
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.18)";
+                            (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
+                        }}
+                        onMouseLeave={e => {
+                            (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)";
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-mid)";
+                            (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                        }}
+                    >Explore Demo →</button>
                 </div>
 
-                <p style={{ fontSize: 12, color: C.textFaint, margin: 0 }}>
+                <p style={{ fontSize: 12, color: C.textMuted, margin: 0, letterSpacing: "0.02em" }}>
                     Designed for founders, operators, and focused thinkers.
                 </p>
             </section>
 
             {/* ★ GENERATE CARD */}
-            <section style={{ display: "flex", flexDirection: "column", gap: 28, alignItems: "center" }}>
-                <div style={{
-                    width: "100%", maxWidth: 740, background: C.cardBg,
-                    border: "1px solid rgba(77,184,255,0.18)", borderRadius: 24,
-                    padding: "36px 32px", display: "flex", flexDirection: "column", gap: 20,
-                    boxShadow: "0 0 60px rgba(77,184,255,0.06)"
-                }}>
+            <section style={{ display: "flex", flexDirection: "column", gap: 32, alignItems: "center" }}>
+                <div className="home-generate-card">
 
                     {/* Header */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 20 }}>⚡</span>
-                        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-                            Generate My Latest News
-                        </h2>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{
+                            width: 42, height: 42, borderRadius: 14,
+                            background: "linear-gradient(135deg, rgba(108,143,255,0.2), rgba(167,139,250,0.15))",
+                            border: "1px solid rgba(108,143,255,0.3)",
+                            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20
+                        }}>⚡</div>
+                        <div>
+                            <h2 style={{
+                                fontSize: 19, fontWeight: 700, margin: 0,
+                                letterSpacing: "-0.02em", color: C.textPrimary
+                            }}>
+                                Generate My Latest News
+                            </h2>
+                            <p style={{ fontSize: 13, color: C.textMuted, margin: "3px 0 0" }}>
+                                Powered by LangChain + Tavily + Grok
+                            </p>
+                        </div>
                     </div>
 
                     {/* Input + button */}
-                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <div className="home-input-row">
                         <input
                             type="text"
+                            className="home-input"
                             placeholder="Enter a topic (e.g. AI, Climate, Crypto)…"
                             value={topic}
                             onChange={e => setTopic(e.target.value)}
                             onKeyDown={e => e.key === "Enter" && !isLoading && handleGenerate()}
                             disabled={isLoading}
-                            style={{
-                                flex: 1, minWidth: 200, padding: "13px 20px",
-                                background: "rgba(255,255,255,0.05)",
-                                border: "1px solid rgba(255,255,255,0.1)", borderRadius: 999,
-                                fontSize: 14, color: "#fff", outline: "none"
-                            }}
-                            onFocus={e => {
-                                e.currentTarget.style.borderColor = "rgba(77,184,255,0.5)";
-                                e.currentTarget.style.background = "rgba(77,184,255,0.05)";
-                            }}
-                            onBlur={e => {
-                                e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                            }}
                         />
-                        <button onClick={handleGenerate}
+                        <button
+                            className="home-gen-btn"
+                            onClick={handleGenerate}
                             disabled={isLoading || !topic.trim()}
-                            style={{
-                                ...gradBtn,
-                                opacity: isLoading || !topic.trim() ? 0.6 : 1,
-                                cursor: isLoading || !topic.trim() ? "not-allowed" : "pointer"
-                            }}>
-                            {isLoading ? <><Spinner />{step === 1 ? "Generating…" : step === 2 ? "Summarizing…" : "Audio…"}</> : "Generate News"}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Spinner light />
+                                    {step === 1 ? "Generating…" : step === 2 ? "Summarizing…" : "Audio…"}
+                                </>
+                            ) : "Generate News"}
                         </button>
                     </div>
 
-                    {/* Three-step progress bar */}
+                    {/* Pipeline progress */}
                     {(isLoading || step === 4) && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                             {/* Step pills */}
-                            <div style={{ display: "flex", gap: 6 }}>
+                            <div className="step-pills">
                                 {[
                                     { n: 1, label: "Generate" },
                                     { n: 2, label: "Summarize" },
@@ -305,100 +340,84 @@ export default function HomePage() {
                                 ].map(({ n, label }) => {
                                     const done = step > n;
                                     const active = step === n;
+                                    const cls = done ? "step-pill--done" : active ? "step-pill--active" : "step-pill--idle";
                                     return (
-                                        <div key={n} style={{
-                                            display: "flex", alignItems: "center",
-                                            gap: 5, padding: "4px 12px", borderRadius: 999, fontSize: 11,
-                                            fontWeight: 600,
-                                            background: done ? "rgba(77,184,255,0.18)" : active ? "rgba(77,184,255,0.1)" : "rgba(255,255,255,0.04)",
-                                            border: done ? "1px solid rgba(77,184,255,0.4)" : active ? "1px solid rgba(77,184,255,0.25)" : "1px solid rgba(255,255,255,0.08)",
-                                            color: done || active ? C.cyan : C.textFaint,
-                                            transition: "all 0.3s"
-                                        }}>
-                                            {done ? "✓" : active ? <Spinner /> : n} {label}
+                                        <div key={n} className={`step-pill ${cls}`}>
+                                            {done ? "✓" : active ? <Spinner /> : n}
+                                            {" "}{label}
                                         </div>
                                     );
                                 })}
                             </div>
                             {/* Bar */}
-                            <div style={{
-                                height: 3, borderRadius: 3,
-                                background: "rgba(255,255,255,0.06)", overflow: "hidden"
-                            }}>
-                                <div style={{
-                                    height: "100%", borderRadius: 3,
-                                    background: "linear-gradient(90deg, #4db8ff, #1a8cff)",
-                                    width: progressWidth, transition: "width 0.7s ease",
-                                    boxShadow: "0 0 8px rgba(77,184,255,0.6)"
-                                }} />
+                            <div className="home-progress-track">
+                                <div className="home-progress-bar" style={{ width: progressWidth }} />
                             </div>
-                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.38)" }}>
-                                {progressLabel}
-                            </span>
+                            <span className="home-progress-label">{progressLabel}</span>
                         </div>
                     )}
 
-                    {/* Generate error */}
+                    {/* Error */}
                     {genRes && !genRes.success && (
                         <div style={{
-                            background: "rgba(255,80,80,0.07)",
-                            border: "1px solid rgba(255,80,80,0.2)", borderRadius: 14,
-                            padding: "15px 20px"
+                            background: "rgba(255,70,70,0.06)",
+                            border: "1px solid rgba(255,70,70,0.22)", borderRadius: 14,
+                            padding: "16px 20px"
                         }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "#ff6b6b", marginBottom: 4 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#ff7070", marginBottom: 5 }}>
                                 ⚠ Generation failed
                             </div>
-                            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
-                                {genRes.error}
-                            </div>
+                            <div style={{ fontSize: 13, color: C.textSecondary }}>{genRes.error}</div>
                         </div>
                     )}
                 </div>
 
-                {/* ★ RESULTS — shown once we have data ─────────────────────── */}
+                {/* ★ RESULTS */}
                 {(genRes?.success || sumRes?.success) && (
-                    <div style={{
-                        width: "100%", maxWidth: 860,
-                        display: "flex", flexDirection: "column", gap: 28
-                    }}>
+                    <div style={{ width: "100%", maxWidth: 880, display: "flex", flexDirection: "column", gap: 32 }}>
 
-                        {/* ── Meta row ── */}
+                        {/* Meta row */}
                         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                             <div style={{
-                                display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "5px 14px", borderRadius: 999, background: C.cyanDim,
-                                border: `1px solid ${C.cyanBorder}`, fontSize: 12, fontWeight: 600,
-                                color: C.cyan
+                                display: "inline-flex", alignItems: "center", gap: 8,
+                                padding: "6px 16px", borderRadius: 999,
+                                background: C.accentDim, border: `1px solid ${C.accentBorder}`,
+                                fontSize: 12.5, fontWeight: 600, color: C.accent
                             }}>
                                 🗞 {sumRes?.topic ?? topic}
                             </div>
                             {(sumRes?.article_count ?? 0) > 0 && (
-                                <span style={{ fontSize: 12, color: C.textFaint }}>
+                                <span style={{
+                                    fontSize: 12, color: C.textMuted,
+                                    background: "rgba(255,255,255,0.03)",
+                                    border: "1px solid var(--border-subtle)",
+                                    padding: "4px 12px", borderRadius: 999
+                                }}>
                                     {sumRes!.article_count} articles analysed
                                 </span>
                             )}
-                            <span style={{ fontSize: 12, color: C.textFaint, marginLeft: "auto" }}>
-                                {new Date().toLocaleDateString("en-US",
-                                    { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
+                            <span style={{ fontSize: 12, color: C.textMuted, marginLeft: "auto" }}>
+                                {new Date().toLocaleDateString("en-US", {
+                                    weekday: "short", year: "numeric", month: "short", day: "numeric"
+                                })}
                             </span>
                         </div>
 
-                        {/* ── Generate-News results (bullet cards) ── */}
+                        {/* ── Agent News Feed ── */}
                         {genRes?.success && rawGenText && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                                {/* Section header */}
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <div style={{
-                                        width: 3, height: 18, borderRadius: 2,
-                                        background: "linear-gradient(#4db8ff, #1a8cff)"
+                            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                    <div className="section-stripe" style={{
+                                        background: "linear-gradient(180deg, var(--accent), var(--accent-2))"
                                     }} />
-                                    <span style={{
-                                        fontSize: 13, fontWeight: 700, color: "#fff",
-                                        letterSpacing: "0.02em"
-                                    }}>
+                                    <span style={{ fontSize: 13.5, fontWeight: 700, color: C.textPrimary, letterSpacing: "0.01em" }}>
                                         📰 Agent News Feed
                                     </span>
-                                    <span style={{ fontSize: 11, color: C.textFaint, marginLeft: 4 }}>
+                                    <span style={{
+                                        fontSize: 11, color: C.textMuted, marginLeft: 4,
+                                        background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-subtle)",
+                                        padding: "3px 10px", borderRadius: 999
+                                    }}>
                                         via LangChain + Tavily + Grok
                                     </span>
                                 </div>
@@ -406,97 +425,61 @@ export default function HomePage() {
                                 {bullets.length > 1 ? (
                                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                                         {bullets.map((item, i) => (
-                                            <div key={i}
-                                                style={{
-                                                    display: "flex", gap: 14, background: C.cardBg,
-                                                    border: `1px solid ${C.cardBorder}`, borderRadius: 14,
-                                                    padding: "16px 20px", alignItems: "flex-start",
-                                                    transition: "border-color 0.2s"
-                                                }}
-                                                onMouseEnter={e =>
-                                                    (e.currentTarget.style.borderColor = "rgba(77,184,255,0.28)")}
-                                                onMouseLeave={e =>
-                                                    (e.currentTarget.style.borderColor = C.cardBorder)}>
-                                                <div style={{
-                                                    flexShrink: 0, width: 22, height: 22,
-                                                    borderRadius: "50%",
-                                                    background: "rgba(77,184,255,0.14)",
-                                                    border: "1px solid rgba(77,184,255,0.3)",
-                                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                                    fontSize: 11, fontWeight: 700, color: C.cyan, marginTop: 1
-                                                }}>
-                                                    {i + 1}
-                                                </div>
+                                            <div key={i} className="news-bullet-card">
+                                                <div className="news-bullet-num">{i + 1}</div>
                                                 <p style={{
-                                                    margin: 0, fontSize: 14, lineHeight: 1.7,
-                                                    color: "rgba(255,255,255,0.78)"
+                                                    margin: 0, fontSize: 14, lineHeight: 1.75,
+                                                    color: "rgba(200,210,255,0.82)"
                                                 }}>{item}</p>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div style={{
-                                        background: C.cardBg, border: `1px solid ${C.cardBorder}`,
-                                        borderRadius: 14, padding: "22px 26px",
-                                        fontSize: 14, lineHeight: 1.8, color: "rgba(255,255,255,0.75)",
-                                        whiteSpace: "pre-wrap"
-                                    }}>
-                                        {rawGenText}
-                                    </div>
+                                    <div className="home-news-output">{rawGenText}</div>
                                 )}
                             </div>
                         )}
 
-                        {/* ── Summarize-News results (broadcast script) ── */}
+                        {/* ── Summary ── */}
                         {sumRes !== null && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                                {/* Divider */}
-                                <div style={{
-                                    height: 1, background: "rgba(255,255,255,0.06)",
-                                    borderRadius: 1
-                                }} />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                                <hr className="section-divider" />
 
-                                {/* Section header */}
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <div style={{
-                                        width: 3, height: 18, borderRadius: 2,
-                                        background: "linear-gradient(#f0a500, #ff7b2e)"
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                    <div className="section-stripe" style={{
+                                        background: "linear-gradient(180deg, var(--violet), #f472b6)"
                                     }} />
-                                    <span style={{
-                                        fontSize: 13, fontWeight: 700, color: "#fff",
-                                        letterSpacing: "0.02em"
-                                    }}>
-                                        🎙 IndustryEar Summary
+                                    <span style={{ fontSize: 13.5, fontWeight: 700, color: C.textPrimary, letterSpacing: "0.01em" }}>
+                                        🎙 YourNews Summary
                                     </span>
-                                    <span style={{ fontSize: 11, color: C.textFaint, marginLeft: 4 }}>
+                                    <span style={{
+                                        fontSize: 11, color: C.textMuted, marginLeft: 4,
+                                        background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-subtle)",
+                                        padding: "3px 10px", borderRadius: 999
+                                    }}>
                                         broadcast-style · ready for audio
                                     </span>
                                 </div>
 
                                 {sumRes.success && sumRes.summary ? (
-                                    <div style={{
-                                        position: "relative", background: "rgba(240,165,0,0.04)",
-                                        border: "1px solid rgba(240,165,0,0.18)", borderRadius: 16,
-                                        padding: "26px 28px"
-                                    }}>
-                                        {/* Decorative mic icon top-right */}
+                                    <div className="summary-card">
                                         <span style={{
-                                            position: "absolute", top: 16, right: 20,
-                                            fontSize: 22, opacity: 0.15
+                                            position: "absolute", top: 18, right: 22,
+                                            fontSize: 26, opacity: 0.12
                                         }}>🎙</span>
                                         <p style={{
-                                            margin: 0, fontSize: 14.5, lineHeight: 1.85,
-                                            color: "rgba(255,255,255,0.82)",
-                                            fontStyle: "normal", letterSpacing: "0.01em"
+                                            margin: 0, fontSize: 15, lineHeight: 1.88,
+                                            color: "rgba(200,210,255,0.85)", fontStyle: "normal",
+                                            letterSpacing: "0.01em",
                                         }}>
                                             {sumRes.summary}
                                         </p>
                                     </div>
                                 ) : (
                                     <div style={{
-                                        background: "rgba(255,170,0,0.06)",
-                                        border: "1px solid rgba(255,170,0,0.2)", borderRadius: 12,
-                                        padding: "14px 18px", fontSize: 13, color: "rgba(255,200,100,0.8)"
+                                        background: "rgba(251,146,60,0.06)",
+                                        border: "1px solid rgba(251,146,60,0.2)", borderRadius: 14,
+                                        padding: "14px 20px", fontSize: 13, color: "rgba(251,146,60,0.85)"
                                     }}>
                                         ⚠ Summarize step failed: {sumRes.error ?? "Unknown error"}
                                     </div>
@@ -507,9 +490,9 @@ export default function HomePage() {
                         {/* ── Audio error ── */}
                         {audioErr && (
                             <div style={{
-                                background: "rgba(255,170,0,0.06)",
-                                border: "1px solid rgba(255,170,0,0.18)", borderRadius: 12,
-                                padding: "12px 18px", fontSize: 13, color: "rgba(255,200,100,0.8)"
+                                background: "rgba(251,146,60,0.06)",
+                                border: "1px solid rgba(251,146,60,0.2)", borderRadius: 14,
+                                padding: "14px 20px", fontSize: 13.5, color: "rgba(251,146,60,0.85)"
                             }}>
                                 🔇 Audio unavailable — {audioErr}
                             </div>
@@ -517,30 +500,25 @@ export default function HomePage() {
 
                         {/* ── Audio player ── */}
                         {audioUrl && (
-                            <div style={{
-                                display: "flex", alignItems: "center", gap: 12,
-                                flexWrap: "wrap", background: C.cardBg,
-                                border: "1px solid rgba(77,184,255,0.15)", borderRadius: 16,
-                                padding: "16px 22px"
-                            }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
-                                    <span style={{ fontSize: 20 }}>🎙️</span>
-                                    <span style={{ fontSize: 13, fontWeight: 600, color: C.cyan }}>
-                                        Audio Briefing
-                                    </span>
+                            <div className="home-audio-row">
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto" }}>
+                                    <div style={{
+                                        width: 40, height: 40, borderRadius: 12,
+                                        background: "linear-gradient(135deg, rgba(108,143,255,0.25), rgba(167,139,250,0.2))",
+                                        border: "1px solid rgba(108,143,255,0.3)",
+                                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18
+                                    }}>🎙️</div>
+                                    <div>
+                                        <div style={{ fontSize: 13.5, fontWeight: 700, color: C.accent }}>
+                                            Audio Briefing
+                                        </div>
+                                        <div style={{ fontSize: 11, color: C.textMuted }}>MP3 · Neural TTS</div>
+                                    </div>
                                 </div>
-                                <audio ref={audioRef} src={audioUrl} controls
-                                    style={{ flex: 1, minWidth: 200, accentColor: "#4db8ff" }} />
-                                <button onClick={handleDownload}
-                                    style={{
-                                        display: "inline-flex", alignItems: "center", gap: 6,
-                                        padding: "9px 18px", borderRadius: 999,
-                                        border: "1px solid rgba(77,184,255,0.3)",
-                                        background: "rgba(77,184,255,0.08)", color: C.cyan,
-                                        fontSize: 13, fontWeight: 600, cursor: "pointer",
-                                        whiteSpace: "nowrap"
-                                    }}>
-                                    ⬇ MP3
+                                <audio ref={audioRef} src={audioUrl} controls className="home-audio"
+                                    style={{ accentColor: "var(--accent)" }} />
+                                <button onClick={handleDownload} className="home-download-btn">
+                                    ⬇ Download MP3
                                 </button>
                             </div>
                         )}
@@ -549,73 +527,74 @@ export default function HomePage() {
             </section>
 
             {/* ★ PLATFORM MODULES */}
-            <section style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{
-                    fontSize: 13, fontWeight: 700, letterSpacing: "0.08em",
-                    textTransform: "uppercase", color: C.textFaint, textAlign: "center"
-                }}>
-                    Platform Modules
-                </div>
-                <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16
-                }}>
-                    {[
-                        { icon: "🎛️", title: "Agent Studio", desc: "Customize your AI news agent — voice, personality, avatar, tone, and briefing style." },
-                        { icon: "📡", title: "Feed Engine", desc: "Select categories, control summary depth, and define your signal filters." },
-                        { icon: "🎙️", title: "Voice Delivery", desc: "Receive daily AI-generated voice briefings with your personalized news agent." },
-                        { icon: "💬", title: "Channels", desc: "Deliver briefings via WhatsApp, Email, and future integrations." },
-                        { icon: "📊", title: "Analytics", desc: "Track reading patterns, engagement, and content preferences." },
-                        { icon: "⚙️", title: "Settings", desc: "Manage account preferences, notification timing, and system controls." },
-                    ].map(({ icon, title, desc }) => (
-                        <button key={title}
-                            style={{
-                                textAlign: "left", background: C.cardBg,
-                                border: `1px solid ${C.cardBorder}`, borderRadius: 18,
-                                padding: "24px 22px", cursor: "pointer",
-                                display: "flex", flexDirection: "column", gap: 8,
-                                transition: "border-color 0.2s, transform 0.2s, background 0.2s"
-                            }}
+            <section className="home-modules">
+                <div className="home-section-label">Platform Modules</div>
+                <div className="home-modules-grid">
+                    {MODULES.map(({ icon, title, desc, accent }) => (
+                        <button key={title} className="app-card"
                             onMouseEnter={e => {
                                 const el = e.currentTarget as HTMLElement;
-                                el.style.borderColor = "rgba(77,184,255,0.35)";
-                                el.style.transform = "translateY(-3px)";
-                                el.style.background = "rgba(77,184,255,0.04)";
+                                el.style.borderColor = "rgba(108,143,255,0.28)";
+                                el.style.transform = "translateY(-4px)";
+                                el.style.background = "rgba(108,143,255,0.04)";
+                                el.style.boxShadow = "0 8px 40px rgba(108,143,255,0.10)";
                             }}
                             onMouseLeave={e => {
                                 const el = e.currentTarget as HTMLElement;
-                                el.style.borderColor = C.cardBorder;
+                                el.style.borderColor = "var(--border-subtle)";
                                 el.style.transform = "translateY(0)";
-                                el.style.background = C.cardBg;
+                                el.style.background = "var(--bg-card)";
+                                el.style.boxShadow = "none";
                             }}>
-                            <span style={{ fontSize: 22 }}>{icon}</span>
-                            <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: "#fff" }}>
-                                {title}
-                            </h3>
-                            <p style={{
-                                fontSize: 13, lineHeight: 1.6,
-                                color: "rgba(255,255,255,0.48)", margin: 0
-                            }}>{desc}</p>
+                            <div style={{
+                                width: 44, height: 44, borderRadius: 14,
+                                background: `${accent}18`,
+                                border: `1px solid ${accent}30`,
+                                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22
+                            }}>
+                                {icon}
+                            </div>
+                            <h3 className="app-card-title">{title}</h3>
+                            <p className="app-card-desc">{desc}</p>
                         </button>
                     ))}
                 </div>
             </section>
 
-            {/* ★ PREVIEW PLACEHOLDER */}
-            <section style={{
-                background: "rgba(255,255,255,0.02)",
-                border: "1px dashed rgba(77,184,255,0.15)", borderRadius: 20, height: 220,
-                display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", gap: 12
-            }}>
-                <span style={{ fontSize: 32, opacity: 0.18 }}>📡</span>
+            {/* ★ COMING SOON PLACEHOLDER */}
+            <section className="home-preview">
+                <div style={{
+                    width: 56, height: 56, borderRadius: 18, opacity: 0.18,
+                    background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26
+                }}>📡</div>
+                <span className="home-preview-text">Live feed preview coming soon</span>
                 <span style={{
-                    fontSize: 14, color: "rgba(255,255,255,0.2)",
-                    letterSpacing: "0.02em"
-                }}>Live feed preview coming soon</span>
+                    fontSize: 11, color: "var(--text-muted)", opacity: 0.6,
+                    background: "rgba(108,143,255,0.06)", border: "1px solid var(--accent-border)",
+                    borderRadius: 999, padding: "4px 14px"
+                }}>Q2 2026</span>
             </section>
 
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <style>{`
+              @keyframes spin { to { transform: rotate(360deg); } }
+              @keyframes pulse-ring {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.45; transform: scale(1.35); }  
+              }
+              @keyframes float-up {
+                from { opacity: 0; transform: translateY(24px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              @keyframes shimmer {
+                0% { background-position: -200% center; }
+                100% { background-position: 200% center; }
+              }
+              @keyframes progress-glow {
+                0%, 100% { box-shadow: 0 0 8px rgba(108,143,255,0.35); }
+                50% { box-shadow: 0 0 20px rgba(108,143,255,0.7), 0 0 40px rgba(167,139,250,0.35); }
+              }
+            `}</style>
         </div>
     );
 }

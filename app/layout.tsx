@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import SessionProvider from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
-  title: "Instant Audio News - Your Daily News, Delivered as Audio",
+  title: "YourNews — AI-Powered Audio News, Personalized For You",
   description:
-    "Get personalized news briefings sent directly to you — WhatsApp or Telegram. AI-powered audio news delivered instantly.",
+    "Receive personalized AI-curated audio news briefings directly to WhatsApp or Telegram. Powered by LangChain, Tavily, and neural TTS.",
 };
 
 export default function RootLayout({
@@ -15,7 +15,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#0d0d14] text-white antialiased">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Syne:wght@700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body style={{ background: "#070711", color: "#f0f2ff", margin: 0 }}>
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
