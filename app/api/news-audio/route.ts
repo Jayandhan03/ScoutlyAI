@@ -31,7 +31,10 @@ export async function POST(req: Request) {
         }
 
         // ── Call the IndustryEar backend ──────────────────────────────
-        const backendRes = await fetch("http://localhost:8000/api/v1/audio/news", {
+        // In production (Vercel) set the BACKEND_URL env var to your Render URL.
+        // Falls back to localhost:8000 for local development.
+        const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
+        const backendRes = await fetch(`${BACKEND}/api/v1/audio/news`, {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify(payload),
