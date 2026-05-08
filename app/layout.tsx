@@ -1,11 +1,10 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import SessionProvider from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
-  title: "YourNews — AI-Powered Audio News, Personalized For You",
+  title: "IndustryEar — AI News Audio Generator",
   description:
-    "Receive personalized AI-curated audio news briefings directly to WhatsApp or Telegram. Powered by LangChain, Tavily, and neural TTS.",
+    "Enter any topic and get an AI-generated, broadcast-quality audio news briefing you can download instantly. Powered by LangChain, Tavily, and neural TTS.",
 };
 
 export default function RootLayout({
@@ -24,7 +23,7 @@ export default function RootLayout({
         />
       </head>
       <body style={{ background: "#070711", color: "#f0f2ff", margin: 0 }}>
-        <SessionProvider>{children}</SessionProvider>
+        {children}
       </body>
     </html>
   );
