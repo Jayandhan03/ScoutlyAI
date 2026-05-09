@@ -1,6 +1,36 @@
 import { NextResponse } from "next/server";
 
+// Raise the serverless timeout to 60s (requires Vercel Pro; free tier caps at 10s)
+export const maxDuration = 60;
+
 /**
+ * GET /api/news-audio  ← debug ping
+ * Returns the resolved BACKEND_URL so we can verify the env var is set on Vercel.
+ */
+export async function GET() {
+    const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
+    let healthStatus: unknown = null;
+    let healthError: string | null = null;
+
+    try {
+        const res = await fetch(`${BACKEND}/api/v1/health`, {
+            signal: AbortSignal.timeout(10_000),
+        });
+        healthStatus = await res.json();
+    } catch (e: any) {
+        healthError = e.message ?? String(e);
+    }
+
+    return NextResponse.json({
+        backend_url:   BACKEND,
+        health_status: healthStatus,
+        health_error:  healthError,
+        env_keys:      Object.keys(process.env).filter(k => k.startsWith("BACKEND") || k.startsWith("NEXT")),
+    });
+}
+
+/**
+ * POST /api/news-audio
  * Proxy for POST /api/v1/audio/news on the IndustryEar FastAPI backend.
  *
  * Full pipeline (server-side):
@@ -12,14 +42,18 @@ import { NextResponse } from "next/server";
  * Response:  audio/mpeg  (downloadable .mp3)
  */
 export async function POST(req: Request) {
+    const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
+    console.log("[news-audio] BACKEND_URL =", BACKEND);
+
     try {
         const body = await req.json();
+        console.log("[news-audio] Request body =", JSON.stringify(body));
 
         const payload = {
             topic:          body.topic,
             limit:          body.limit          ?? 5,
             time_published: body.time_published ?? "anytime",
-            voice_id:       body.voice_id       ?? "en",   // BCP-47 lang code for gTTS
+            voice_id:       body.voice_id       ?? "en",
             model_id:       body.model_id       ?? "",
         };
 
@@ -30,18 +64,33 @@ export async function POST(req: Request) {
             );
         }
 
-        // ── Call the IndustryEar backend ──────────────────────────────
-        // In production (Vercel) set the BACKEND_URL env var to your Render URL.
-        // Falls back to localhost:8000 for local development.
-        const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
-        const backendRes = await fetch(`${BACKEND}/api/v1/audio/news`, {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify(payload),
-        });
+        console.log("[news-audio] Calling backend:", `${BACKEND}/api/v1/audio/news`);
+
+        let backendRes: Response;
+        try {
+            backendRes = await fetch(`${BACKEND}/api/v1/audio/news`, {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body:    JSON.stringify(payload),
+                signal:  AbortSignal.timeout(55_000),   // 55 s — accounts for Render cold-start
+            });
+        } catch (fetchErr: any) {
+            console.error("[news-audio] fetch() threw:", fetchErr?.name, fetchErr?.message);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error:   `Could not reach backend (${fetchErr?.name ?? "NetworkError"}): ${fetchErr?.message}`,
+                    backend_url: BACKEND,
+                },
+                { status: 502 }
+            );
+        }
+
+        console.log("[news-audio] Backend responded:", backendRes.status, backendRes.statusText);
 
         if (!backendRes.ok) {
             const errText = await backendRes.text();
+            console.error("[news-audio] Backend error body:", errText);
             let errDetail: string;
             try {
                 const parsed = JSON.parse(errText);
@@ -50,13 +99,14 @@ export async function POST(req: Request) {
                 errDetail = errText;
             }
             return NextResponse.json(
-                { success: false, error: errDetail },
+                { success: false, error: errDetail, backend_status: backendRes.status },
                 { status: backendRes.status }
             );
         }
 
         // ── Forward the MP3 stream + headers ─────────────────────────
         const audioBuffer = await backendRes.arrayBuffer();
+        console.log("[news-audio] Audio bytes received:", audioBuffer.byteLength);
 
         const contentDisposition =
             backendRes.headers.get("Content-Disposition") ??
@@ -78,8 +128,14 @@ export async function POST(req: Request) {
         });
 
     } catch (error: any) {
+        console.error("[news-audio] Unhandled error:", error?.name, error?.message, error?.stack);
         return NextResponse.json(
-            { success: false, error: error.message ?? "Unexpected server error" },
+            {
+                success:     false,
+                error:       error.message ?? "Unexpected server error",
+                error_name:  error?.name,
+                backend_url: BACKEND,
+            },
             { status: 500 }
         );
     }
