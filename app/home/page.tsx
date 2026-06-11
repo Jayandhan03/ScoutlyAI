@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 /* ── Animated waveform bars ── */
 function Waveform({ active }: { active: boolean }) {
@@ -36,6 +36,15 @@ function Spinner() {
   );
 }
 
+/* ── Telegram icon SVG ── */
+function TelegramIcon({ size = 18, color = "#fff" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.787l3.019-14.228c.309-1.239-.473-1.8-1.282-1.432z" fill={color}/>
+    </svg>
+  );
+}
+
 type Step = 0 | 1 | 2 | 3 | 4;
 const STEP_LABELS: Record<number, string> = {
   1: "Fetching latest articles…",
@@ -43,6 +52,8 @@ const STEP_LABELS: Record<number, string> = {
   3: "Generating audio briefing…",
   4: "Done!",
 };
+
+const TELEGRAM_BOT_USERNAME = "UrnewsAI_bot";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -55,12 +66,110 @@ export default function HomePage() {
   const [error, setError]         = useState<string | null>(null);
   const audioRef                  = useRef<HTMLAudioElement>(null);
 
+  /* ── Telegram state ── */
+  const [showTgModal, setShowTgModal]   = useState(false);
+  const [tgConnected, setTgConnected]   = useState(false);
+  const [tgUsername, setTgUsername]      = useState<string | null>(null);
+  const [tgSending, setTgSending]       = useState(false);
+  const [tgSent, setTgSent]             = useState(false);
+  const [tgError, setTgError]           = useState<string | null>(null);
+  const [userToken, setUserToken]       = useState<string>("");
+  const [tgTesting, setTgTesting]       = useState(false);
+  const [tgTestResult, setTgTestResult] = useState<"ok" | "err" | null>(null);
+
   // Auth guard — redirect to sign-in if not logged in
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/signin");
     }
   }, [status, router]);
+
+  /* ── Generate or retrieve user token on mount ── */
+  useEffect(() => {
+    let token = localStorage.getItem("yournews_tg_token");
+    if (!token) {
+      token = "tg_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      localStorage.setItem("yournews_tg_token", token);
+    }
+    setUserToken(token);
+  }, []);
+
+  /* ── Poll Telegram connection status when modal is open ── */
+  const checkTgStatus = useCallback(async () => {
+    if (!userToken) return;
+    try {
+      const res = await fetch(`/api/telegram-status?token=${userToken}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTgConnected(data.connected);
+        if (data.username) setTgUsername(data.username);
+        if (data.first_name && !data.username) setTgUsername(data.first_name);
+      }
+    } catch { /* silent */ }
+  }, [userToken]);
+
+  useEffect(() => {
+    if (!showTgModal || tgConnected) return;
+    const iv = setInterval(checkTgStatus, 3000);
+    return () => clearInterval(iv);
+  }, [showTgModal, tgConnected, checkTgStatus]);
+
+  // Also check once on mount
+  useEffect(() => {
+    if (userToken) checkTgStatus();
+  }, [userToken, checkTgStatus]);
+
+  /* ── Send a test ping to Telegram ── */
+  const handleTestTelegram = async () => {
+    if (tgTesting) return;
+    setTgTesting(true);
+    setTgTestResult(null);
+    try {
+      const res = await fetch("/api/telegram-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: userToken }),
+      });
+      setTgTestResult(res.ok ? "ok" : "err");
+    } catch {
+      setTgTestResult("err");
+    } finally {
+      setTgTesting(false);
+      setTimeout(() => setTgTestResult(null), 4000);
+    }
+  };
+
+  /* ── Send audio to Telegram ── */
+  const handleSendTelegram = async () => {
+    if (!audioUrl || tgSending) return;
+    setTgSending(true);
+    setTgError(null);
+    setTgSent(false);
+    try {
+      const audioBlob = await fetch(audioUrl).then(r => r.blob());
+      const formData = new FormData();
+      formData.append("audio", audioBlob, audioName);
+      formData.append("user_token", userToken);
+      formData.append("topic", topic);
+
+      const res = await fetch("/api/send-telegram", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Failed to send" }));
+        setTgError(err.error ?? "Failed to send audio to Telegram");
+      } else {
+        setTgSent(true);
+        setTimeout(() => setTgSent(false), 4000);
+      }
+    } catch (e: any) {
+      setTgError(e.message ?? "Network error");
+    } finally {
+      setTgSending(false);
+    }
+  };
 
   const isLoading = step > 0 && step < 4;
 
@@ -154,8 +263,9 @@ export default function HomePage() {
             YourNews
           </a>
 
-          {/* User info + sign out */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {/* Right side: User info + sign out */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {/* User info */}
             {session?.user?.image && (
               <img
                 src={session.user.image}
@@ -348,6 +458,7 @@ export default function HomePage() {
               display: "flex", flexDirection: "column", gap: 18,
               animation: "floatUp 0.5s cubic-bezier(0.16,1,0.3,1) both",
             }}>
+              {/* Player header */}
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{
                   width: 44, height: 44, borderRadius: 14,
@@ -366,32 +477,127 @@ export default function HomePage() {
                   padding: "4px 12px", fontSize: 11, fontWeight: 600, color: "#34d399",
                 }}>✓ Ready</div>
               </div>
+
               <Waveform active />
               <audio ref={audioRef} src={audioUrl} controls style={{ width: "100%", accentColor: "#6c8fff" }} />
-              <button
-                id="download-btn"
-                onClick={handleDownload}
-                style={{
-                  width: "100%", height: 48, borderRadius: 12,
-                  background: "linear-gradient(135deg, #6c8fff, #a78bfa)",
-                  border: "none", color: "#fff",
-                  fontSize: 14.5, fontWeight: 700, cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  fontFamily: "'Inter', sans-serif",
-                  boxShadow: "0 0 24px rgba(108,143,255,0.35), 0 4px 16px rgba(0,0,0,0.3)",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(108,143,255,0.55), 0 8px 20px rgba(0,0,0,0.3)";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 24px rgba(108,143,255,0.35), 0 4px 16px rgba(0,0,0,0.3)";
-                }}
-              >
-                ⬇ Download MP3
-              </button>
+
+              {/* Action buttons row */}
+              <div style={{ display: "flex", gap: 10 }}>
+                {/* Download button */}
+                <button
+                  id="download-btn"
+                  onClick={handleDownload}
+                  style={{
+                    flex: 1, height: 48, borderRadius: 12,
+                    background: "linear-gradient(135deg, #6c8fff, #a78bfa)",
+                    border: "none", color: "#fff",
+                    fontSize: 14.5, fontWeight: 700, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    fontFamily: "'Inter', sans-serif",
+                    boxShadow: "0 0 24px rgba(108,143,255,0.35), 0 4px 16px rgba(0,0,0,0.3)",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(108,143,255,0.55), 0 8px 20px rgba(0,0,0,0.3)";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 24px rgba(108,143,255,0.35), 0 4px 16px rgba(0,0,0,0.3)";
+                  }}
+                >
+                  ⬇ Download MP3
+                </button>
+
+                {/* Send to Telegram button — only if connected */}
+                {tgConnected && (
+                  <button
+                    id="send-telegram-btn"
+                    onClick={handleSendTelegram}
+                    disabled={tgSending}
+                    style={{
+                      flex: 1, height: 48, borderRadius: 12,
+                      background: tgSent
+                        ? "linear-gradient(135deg, #34d399, #10b981)"
+                        : tgSending
+                        ? "rgba(42,171,238,0.25)"
+                        : "linear-gradient(135deg, #2AABEE, #229ED9)",
+                      border: "none", color: "#fff",
+                      fontSize: 14.5, fontWeight: 700,
+                      cursor: tgSending ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      fontFamily: "'Inter', sans-serif",
+                      boxShadow: tgSending
+                        ? "none"
+                        : "0 0 24px rgba(42,171,238,0.35), 0 4px 16px rgba(0,0,0,0.3)",
+                      transition: "all 0.25s ease",
+                    }}
+                    onMouseEnter={e => {
+                      if (!tgSending) {
+                        (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 40px rgba(42,171,238,0.55), 0 8px 20px rgba(0,0,0,0.3)";
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                      if (!tgSending) {
+                        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 24px rgba(42,171,238,0.35), 0 4px 16px rgba(0,0,0,0.3)";
+                      }
+                    }}
+                  >
+                    {tgSent ? (
+                      <>✓ Sent!</>
+                    ) : tgSending ? (
+                      <><Spinner /> Sending…</>
+                    ) : (
+                      <><TelegramIcon size={16} /> Send to Telegram</>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Telegram send error */}
+              {tgError && (
+                <div style={{
+                  background: "rgba(255,70,70,0.07)",
+                  border: "1px solid rgba(255,70,70,0.2)",
+                  borderRadius: 10, padding: "10px 14px",
+                  fontSize: 12.5, color: "#ff7070",
+                }}>
+                  ⚠ {tgError}
+                </div>
+              )}
+
+              {/* Telegram not connected hint — shown inside audio result card */}
+              {!tgConnected && (
+                <button
+                  onClick={() => setShowTgModal(true)}
+                  style={{
+                    width: "100%", height: 40, borderRadius: 10,
+                    background: "rgba(42,171,238,0.06)",
+                    border: "1px dashed rgba(42,171,238,0.25)",
+                    color: "rgba(42,171,238,0.7)",
+                    fontSize: 12.5, fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                    fontFamily: "'Inter', sans-serif",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.background = "rgba(42,171,238,0.1)";
+                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(42,171,238,0.4)";
+                    (e.currentTarget as HTMLElement).style.color = "#2AABEE";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.background = "rgba(42,171,238,0.06)";
+                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(42,171,238,0.25)";
+                    (e.currentTarget as HTMLElement).style.color = "rgba(42,171,238,0.7)";
+                  }}
+                >
+                  <TelegramIcon size={14} color="currentColor" />
+                  Connect Telegram to send audio directly
+                </button>
+              )}
             </div>
           )}
 
@@ -400,6 +606,144 @@ export default function HomePage() {
               Typical generation takes 15–45 seconds · Powered by LangChain + Tavily + Neural TTS
             </p>
           )}
+        </div>
+
+        {/* ── Telegram Integration Section ── */}
+        <div style={{
+          width: "100%", maxWidth: 680, marginTop: 40,
+          background: "rgba(42,171,238,0.04)",
+          border: "1px solid rgba(42,171,238,0.12)",
+          borderRadius: 22, padding: "36px 32px",
+          backdropFilter: "blur(16px)",
+          animation: "floatUp 0.85s 0.15s cubic-bezier(0.16,1,0.3,1) both",
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          {/* Subtle glow accent */}
+          <div style={{
+            position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)",
+            width: 300, height: 120, borderRadius: "50%",
+            background: "rgba(42,171,238,0.08)", filter: "blur(50px)",
+            pointerEvents: "none",
+          }} />
+
+          {/* Telegram icon badge */}
+          <div style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 56, height: 56, borderRadius: 18,
+            background: "linear-gradient(135deg, #2AABEE, #229ED9)",
+            boxShadow: "0 0 32px rgba(42,171,238,0.35), 0 4px 16px rgba(0,0,0,0.2)",
+            marginBottom: 20, position: "relative",
+          }}>
+            <TelegramIcon size={28} color="#fff" />
+          </div>
+
+          {/* Heading */}
+          <h2 style={{
+            fontFamily: "'Syne', sans-serif",
+            fontSize: "clamp(20px, 3.5vw, 26px)", fontWeight: 800,
+            letterSpacing: "-0.03em", lineHeight: 1.2,
+            margin: "0 0 10px", color: "#f0f2ff",
+          }}>
+            Get Audio News Directly{" "}
+            <span style={{
+              background: "linear-gradient(135deg, #2AABEE, #38bdf8)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>on Telegram</span>
+          </h2>
+
+          {/* Description */}
+          <p style={{
+            fontSize: 14.5, lineHeight: 1.7, color: "rgba(200,210,255,0.6)",
+            margin: "0 auto 24px", maxWidth: 480,
+          }}>
+            Receive your AI-curated audio briefings with preferred timely updates —
+            delivered straight to your Telegram chat. No extra apps, just tap and listen.
+          </p>
+
+          {/* Feature pills */}
+          <div style={{
+            display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap",
+            marginBottom: 26,
+          }}>
+            {[
+              { icon: "⏰", text: "Scheduled updates" },
+              { icon: "🎧", text: "Instant delivery" },
+              { icon: "🔔", text: "Custom alerts" },
+            ].map(({ icon, text }) => (
+              <div key={text} style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "6px 14px", borderRadius: 999,
+                background: "rgba(42,171,238,0.08)",
+                border: "1px solid rgba(42,171,238,0.18)",
+                fontSize: 12, fontWeight: 600, color: "rgba(42,171,238,0.85)",
+              }}>
+                <span>{icon}</span> {text}
+              </div>
+            ))}
+          </div>
+
+          {/* Connect / Status button */}
+          {tgConnected ? (
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 10,
+              padding: "14px 28px", borderRadius: 16,
+              background: "rgba(52,211,153,0.08)",
+              border: "1px solid rgba(52,211,153,0.25)",
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 10,
+                background: "rgba(52,211,153,0.15)",
+                border: "1px solid rgba(52,211,153,0.3)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 16,
+              }}>✓</div>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#34d399" }}>
+                  Telegram Connected
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(200,210,255,0.55)", marginTop: 1 }}>
+                  {tgUsername ? `@${tgUsername}` : "Your account is linked"} · Audio will be sent after generation
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              id="telegram-connect-section-btn"
+              onClick={() => setShowTgModal(true)}
+              style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
+                height: 52, padding: "0 32px", borderRadius: 14,
+                background: "linear-gradient(135deg, #2AABEE, #229ED9)",
+                border: "none", color: "#fff",
+                fontSize: 15, fontWeight: 700,
+                fontFamily: "'Inter', sans-serif",
+                cursor: "pointer",
+                boxShadow: "0 0 30px rgba(42,171,238,0.4), 0 4px 16px rgba(0,0,0,0.3)",
+                transition: "all 0.25s ease",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 0 44px rgba(42,171,238,0.55), 0 8px 20px rgba(0,0,0,0.3)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 0 30px rgba(42,171,238,0.4), 0 4px 16px rgba(0,0,0,0.3)";
+              }}
+            >
+              <TelegramIcon size={18} color="#fff" />
+              Connect with Telegram
+            </button>
+          )}
+
+          {/* Privacy note */}
+          <p style={{
+            margin: "18px 0 0", fontSize: 11.5, color: "rgba(160,175,220,0.35)",
+          }}>
+            🔒 We only access your chat ID — never your messages or contacts.
+          </p>
         </div>
 
         {/* How it works strip */}
@@ -428,6 +772,212 @@ export default function HomePage() {
         </div>
       </main>
 
+      {/* ══ TELEGRAM CONNECT MODAL ══ */}
+      {showTgModal && (
+        <div
+          id="telegram-modal-overlay"
+          onClick={e => { if (e.target === e.currentTarget) setShowTgModal(false); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20,
+            animation: "fadeIn 0.25s ease both",
+          }}
+        >
+          <div
+            id="telegram-modal"
+            style={{
+              width: "100%", maxWidth: 480,
+              background: "rgba(18,18,35,0.95)",
+              border: "1px solid rgba(42,171,238,0.2)",
+              borderRadius: 24, padding: "32px 30px 28px",
+              boxShadow: "0 0 80px rgba(42,171,238,0.12), 0 32px 64px rgba(0,0,0,0.5)",
+              animation: "modalSlideUp 0.35s cubic-bezier(0.16,1,0.3,1) both",
+              position: "relative",
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowTgModal(false)}
+              style={{
+                position: "absolute", top: 16, right: 16,
+                width: 32, height: 32, borderRadius: "50%",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(160,175,220,0.5)", fontSize: 16,
+                cursor: "pointer", display: "flex",
+                alignItems: "center", justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)";
+                (e.currentTarget as HTMLElement).style.color = "#fff";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+                (e.currentTarget as HTMLElement).style.color = "rgba(160,175,220,0.5)";
+              }}
+            >✕</button>
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: 16,
+                background: "linear-gradient(135deg, #2AABEE, #229ED9)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 0 30px rgba(42,171,238,0.3)",
+                flexShrink: 0,
+              }}>
+                <TelegramIcon size={28} color="#fff" />
+              </div>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Syne', sans-serif", letterSpacing: "-0.02em" }}>
+                  Connect Telegram
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(200,210,255,0.65)", marginTop: 2 }}>
+                  Get audio briefings sent directly to you
+                </div>
+              </div>
+            </div>
+
+            {/* Connection status */}
+            {tgConnected ? (
+              <div style={{
+                background: "rgba(52,211,153,0.08)",
+                border: "1px solid rgba(52,211,153,0.25)",
+                borderRadius: 16, padding: "20px 22px",
+                marginBottom: 20,
+                animation: "floatUp 0.4s cubic-bezier(0.16,1,0.3,1) both",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 12,
+                    background: "rgba(52,211,153,0.15)",
+                    border: "1px solid rgba(52,211,153,0.3)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 18,
+                  }}>✓</div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#34d399" }}>
+                      Connected!
+                    </div>
+                    <div style={{ fontSize: 12, color: "rgba(200,210,255,0.65)" }}>
+                      {tgUsername ? `@${tgUsername}` : "Your Telegram account"}
+                    </div>
+                  </div>
+                </div>
+                <p style={{ margin: 0, fontSize: 13, color: "rgba(200,210,255,0.65)", lineHeight: 1.6 }}>
+                  You can now send generated audio briefings directly to your Telegram.
+                  Use the &quot;Send to Telegram&quot; button after generating audio.
+                </p>
+                {/* Test ping button */}
+                <button
+                  onClick={handleTestTelegram}
+                  disabled={tgTesting}
+                  style={{
+                    marginTop: 14, width: "100%", height: 42, borderRadius: 10,
+                    background: tgTestResult === "ok"
+                      ? "rgba(52,211,153,0.1)"
+                      : tgTestResult === "err"
+                      ? "rgba(255,70,70,0.08)"
+                      : "rgba(42,171,238,0.06)",
+                    border: `1px solid ${tgTestResult === "ok" ? "rgba(52,211,153,0.3)" : tgTestResult === "err" ? "rgba(255,70,70,0.2)" : "rgba(42,171,238,0.2)"}`,
+                    color: tgTestResult === "ok" ? "#34d399" : tgTestResult === "err" ? "#ff7070" : "rgba(42,171,238,0.85)",
+                    fontSize: 12.5, fontWeight: 600, cursor: tgTesting ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                    fontFamily: "'Inter', sans-serif", transition: "all 0.2s",
+                  }}
+                >
+                  {tgTesting ? <><Spinner /> Sending test…</> : tgTestResult === "ok" ? "✓ Test message sent!" : tgTestResult === "err" ? "⚠ Test failed" : "Send test message"}
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Steps */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
+                  {[
+                    { num: "1", title: "Open our bot in Telegram", desc: "Click the button below to open @UrnewsAI_bot" },
+                    { num: "2", title: 'Press "Start" in Telegram', desc: "This links your Telegram to your YourNews account" },
+                    { num: "3", title: "Come back here", desc: "This modal will update automatically when connected" },
+                  ].map(({ num, title, desc }) => (
+                    <div key={num} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                        background: "rgba(42,171,238,0.1)",
+                        border: "1px solid rgba(42,171,238,0.25)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 13, fontWeight: 800, color: "#2AABEE",
+                      }}>{num}</div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#f0f2ff", marginBottom: 2 }}>{title}</div>
+                        <div style={{ fontSize: 12.5, color: "rgba(160,175,220,0.5)", lineHeight: 1.5 }}>{desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Open Bot button */}
+                <a
+                  id="telegram-open-bot-btn"
+                  href={`https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userToken}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                    width: "100%", height: 52, borderRadius: 14,
+                    background: "linear-gradient(135deg, #2AABEE, #229ED9)",
+                    border: "none", color: "#fff",
+                    fontSize: 15, fontWeight: 700, textDecoration: "none",
+                    fontFamily: "'Inter', sans-serif",
+                    boxShadow: "0 0 30px rgba(42,171,238,0.4), 0 4px 16px rgba(0,0,0,0.3)",
+                    transition: "all 0.2s",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 0 40px rgba(42,171,238,0.55), 0 8px 20px rgba(0,0,0,0.3)";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 0 30px rgba(42,171,238,0.4), 0 4px 16px rgba(0,0,0,0.3)";
+                  }}
+                >
+                  <TelegramIcon size={20} color="#fff" />
+                  Open @UrnewsAI_bot
+                </a>
+
+                {/* Waiting indicator */}
+                <div style={{
+                  marginTop: 16, display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: 8,
+                  fontSize: 12, color: "rgba(160,175,220,0.5)",
+                }}>
+                  <span style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: "#2AABEE",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                    display: "inline-block",
+                  }} />
+                  Waiting for connection…
+                </div>
+              </>
+            )}
+
+            {/* Footer note */}
+            <div style={{
+              marginTop: 20, paddingTop: 16,
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              fontSize: 11.5, color: "rgba(160,175,220,0.4)",
+              textAlign: "center", lineHeight: 1.6,
+            }}>
+              🔒 We only receive your Telegram chat ID — no access to your messages or contacts.
+            </div>
+          </div>
+        </div>
+      )}
+
       <footer style={{
         borderTop: "1px solid rgba(255,255,255,0.055)", padding: "20px 32px",
         textAlign: "center", fontSize: 12, color: "rgba(160,175,220,0.4)",
@@ -449,6 +999,14 @@ export default function HomePage() {
         @keyframes wave-bar {
           from { opacity: 0.6; transform: scaleY(0.4); }
           to { opacity: 1; transform: scaleY(1); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes modalSlideUp {
+          from { opacity: 0; transform: translateY(30px) scale(0.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
         input::placeholder { color: rgba(160,175,220,0.35); }
       `}</style>
