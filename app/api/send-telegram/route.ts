@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectToDatabase } from "@/lib/mongodb";
 import TelegramLink from "@/models/TelegramLink";
 
@@ -6,20 +8,21 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const audio = formData.get("audio") as File | null;
-    const userToken = formData.get("user_token") as string | null;
     const topic = (formData.get("topic") as string) ?? "News Briefing";
 
-    if (!audio || !userToken) {
-      return NextResponse.json(
-        { success: false, error: "audio and user_token are required" },
-        { status: 422 }
-      );
+    if (!audio) {
+      return NextResponse.json({ success: false, error: "audio is required" }, { status: 422 });
     }
 
     await connectToDatabase();
-    const link = await TelegramLink.findOne({ token: userToken });
+    const link = await TelegramLink.findOne({ email: session.user.email });
     if (!link) {
       return NextResponse.json(
         { success: false, error: "Telegram not connected. Please link your account first." },
@@ -50,9 +53,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("[send-telegram]", err?.message);
-    return NextResponse.json(
-      { success: false, error: err.message ?? "Unexpected error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: err.message ?? "Unexpected error" }, { status: 500 });
   }
 }
