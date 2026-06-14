@@ -115,6 +115,7 @@ export default function HomePage() {
     if (!showTgModal || tgConnected) return;
 
     window.onTelegramAuth = async (user: TelegramUser) => {
+      console.log("[TelegramAuth] callback fired:", user);
       try {
         const res = await fetch("/api/telegram-auth", {
           method: "POST",
@@ -122,11 +123,17 @@ export default function HomePage() {
           body: JSON.stringify(user),
         });
         const data = await res.json();
+        console.log("[TelegramAuth] server response:", data);
         if (data.success) {
           setTgConnected(true);
           setTgUsername(user.username ?? user.first_name ?? null);
+        } else {
+          setTgError(data.error ?? "Telegram auth failed");
         }
-      } catch { /* silent */ }
+      } catch (e: any) {
+        console.error("[TelegramAuth] error:", e);
+        setTgError("Connection error — please try again");
+      }
     };
 
     const container = document.getElementById("tg-widget-container");
@@ -137,7 +144,7 @@ export default function HomePage() {
     script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
     script.setAttribute("data-size", "large");
     script.setAttribute("data-onauth", "onTelegramAuth(user)");
-    script.setAttribute("data-request-access", "write");
+    // No data-request-access — keeps it as simple login only (one confirmation step)
     script.async = true;
     container.appendChild(script);
 
