@@ -4,21 +4,6 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 
-type TelegramUser = {
-  id: number;
-  first_name: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-};
-
-declare global {
-  interface Window {
-    onTelegramAuth: (user: TelegramUser) => void;
-  }
-}
-
 /* ── Animated waveform bars ── */
 function Waveform({ active }: { active: boolean }) {
   return (
@@ -68,8 +53,6 @@ const STEP_LABELS: Record<number, string> = {
   4: "Done!",
 };
 
-const TELEGRAM_BOT_USERNAME = "UrnewsAI_bot";
-
 export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -82,12 +65,15 @@ export default function HomePage() {
   const audioRef                  = useRef<HTMLAudioElement>(null);
 
   /* ── Telegram state ── */
-  const [showTgModal, setShowTgModal] = useState(false);
-  const [tgConnected, setTgConnected] = useState(false);
-  const [tgUsername, setTgUsername]   = useState<string | null>(null);
-  const [tgSending, setTgSending]     = useState(false);
-  const [tgSent, setTgSent]           = useState(false);
-  const [tgError, setTgError]         = useState<string | null>(null);
+  const [showTgModal, setShowTgModal]   = useState(false);
+  const [tgConnected, setTgConnected]   = useState(false);
+  const [tgUsername, setTgUsername]     = useState<string | null>(null);
+  const [tgConnecting, setTgConnecting] = useState(false); // waiting for /start in Telegram
+  const [tgSending, setTgSending]       = useState(false);
+  const [tgSent, setTgSent]             = useState(false);
+  const [tgTesting, setTgTesting]       = useState(false);
+  const [tgTestSent, setTgTestSent]     = useState(false);
+  const [tgError, setTgError]           = useState<string | null>(null);
 
   // Auth guard
   useEffect(() => {
@@ -110,50 +96,87 @@ export default function HomePage() {
     })();
   }, []);
 
-  /* ── Inject Telegram Login Widget when modal opens ── */
+  /* ── While waiting for the user to press Start in Telegram, poll for the link ── */
   useEffect(() => {
-    if (!showTgModal || tgConnected) return;
+    if (!tgConnecting || tgConnected) return;
+    const startedAt = Date.now();
 
-    window.onTelegramAuth = async (user: TelegramUser) => {
-      console.log("[TelegramAuth] callback fired:", user);
-      try {
-        const res = await fetch("/api/telegram-auth", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(user),
-        });
-        const data = await res.json();
-        console.log("[TelegramAuth] server response:", data);
-        if (data.success) {
-          setTgConnected(true);
-          setTgUsername(user.username ?? user.first_name ?? null);
-        } else {
-          setTgError(data.error ?? "Telegram auth failed");
-        }
-      } catch (e: any) {
-        console.error("[TelegramAuth] error:", e);
-        setTgError("Connection error — please try again");
+    const id = setInterval(async () => {
+      if (Date.now() - startedAt > 180_000) { // give up after 3 min
+        clearInterval(id);
+        setTgConnecting(false);
+        setTgError("Timed out waiting for Telegram. Tap Connect to try again.");
+        return;
       }
-    };
+      try {
+        const res = await fetch("/api/telegram-auth");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connected) {
+            clearInterval(id);
+            setTgConnecting(false);
+            setTgConnected(true);
+            setTgUsername(data.username ?? data.first_name ?? null);
+          }
+        }
+      } catch { /* keep polling */ }
+    }, 2500);
 
-    const container = document.getElementById("tg-widget-container");
-    if (!container) return;
-    container.innerHTML = "";
-    const script = document.createElement("script");
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
-    script.setAttribute("data-size", "large");
-    script.setAttribute("data-onauth", "onTelegramAuth(user)");
-    // No data-request-access — keeps it as simple login only (one confirmation step)
-    script.async = true;
-    container.appendChild(script);
+    return () => clearInterval(id);
+  }, [tgConnecting, tgConnected]);
 
-    return () => {
-      container.innerHTML = "";
-      // @ts-ignore
-      delete window.onTelegramAuth;
-    };
-  }, [showTgModal, tgConnected]);
+  /* ── Connect: mint a deep-link, open the bot, then start polling ── */
+  const handleConnectTelegram = async () => {
+    setTgError(null);
+    setTgConnecting(true);
+    try {
+      const res = await fetch("/api/telegram-auth", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.deepLink) {
+        setTgConnecting(false);
+        setTgError(data.error ?? "Could not start Telegram connection.");
+        return;
+      }
+      window.open(data.deepLink, "_blank", "noopener,noreferrer");
+    } catch {
+      setTgConnecting(false);
+      setTgError("Network error — please try again.");
+    }
+  };
+
+  /* ── Disconnect ── */
+  const handleDisconnectTelegram = async () => {
+    setTgError(null);
+    try {
+      await fetch("/api/telegram-auth", { method: "DELETE" });
+    } catch { /* ignore */ }
+    setTgConnected(false);
+    setTgUsername(null);
+    setTgConnecting(false);
+    setTgTestSent(false);
+  };
+
+  /* ── Send a test message to the linked chat ── */
+  const handleTestTelegram = async () => {
+    if (tgTesting) return;
+    setTgTesting(true);
+    setTgError(null);
+    setTgTestSent(false);
+    try {
+      const res = await fetch("/api/telegram-test", { method: "POST" });
+      if (res.ok) {
+        setTgTestSent(true);
+        setTimeout(() => setTgTestSent(false), 4000);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setTgError(err.error ?? "Test message failed.");
+      }
+    } catch {
+      setTgError("Network error — please try again.");
+    } finally {
+      setTgTesting(false);
+    }
+  };
 
   /* ── Send audio to Telegram ── */
   const handleSendTelegram = async () => {
@@ -702,27 +725,65 @@ export default function HomePage() {
 
           {/* Connect / Status button */}
           {tgConnected ? (
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
-              padding: "14px 28px", borderRadius: 16,
-              background: "rgba(52,211,153,0.08)",
-              border: "1px solid rgba(52,211,153,0.25)",
-            }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
               <div style={{
-                width: 32, height: 32, borderRadius: 10,
-                background: "rgba(52,211,153,0.15)",
-                border: "1px solid rgba(52,211,153,0.3)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 16,
-              }}>✓</div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#34d399" }}>
-                  Telegram Connected
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(200,210,255,0.55)", marginTop: 1 }}>
-                  {tgUsername ? `@${tgUsername}` : "Your account is linked"} · Audio will be sent after generation
+                display: "inline-flex", alignItems: "center", gap: 10,
+                padding: "14px 28px", borderRadius: 16,
+                background: "rgba(52,211,153,0.08)",
+                border: "1px solid rgba(52,211,153,0.25)",
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 10,
+                  background: "rgba(52,211,153,0.15)",
+                  border: "1px solid rgba(52,211,153,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 16,
+                }}>✓</div>
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#34d399" }}>
+                    Telegram Connected
+                  </div>
+                  <div style={{ fontSize: 12, color: "rgba(200,210,255,0.55)", marginTop: 1 }}>
+                    {tgUsername ? `@${tgUsername}` : "Your account is linked"} · Audio will be sent after generation
+                  </div>
                 </div>
               </div>
+
+              {/* Test + Disconnect */}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={handleTestTelegram}
+                  disabled={tgTesting}
+                  style={{
+                    height: 38, padding: "0 18px", borderRadius: 10,
+                    background: tgTestSent ? "rgba(52,211,153,0.15)" : "rgba(42,171,238,0.1)",
+                    border: `1px solid ${tgTestSent ? "rgba(52,211,153,0.35)" : "rgba(42,171,238,0.3)"}`,
+                    color: tgTestSent ? "#34d399" : "#2AABEE",
+                    fontSize: 12.5, fontWeight: 600,
+                    cursor: tgTesting ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", gap: 7,
+                    fontFamily: "'Inter', sans-serif", transition: "all 0.2s",
+                  }}
+                >
+                  {tgTestSent ? "✓ Test sent" : tgTesting ? <><Spinner /> Sending…</> : "Send test message"}
+                </button>
+                <button
+                  onClick={handleDisconnectTelegram}
+                  style={{
+                    height: 38, padding: "0 18px", borderRadius: 10,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,70,70,0.25)",
+                    color: "rgba(255,120,120,0.85)",
+                    fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                    fontFamily: "'Inter', sans-serif", transition: "all 0.2s",
+                  }}
+                >
+                  Disconnect
+                </button>
+              </div>
+              {tgError && (
+                <div style={{ fontSize: 12, color: "#ff7070" }}>⚠ {tgError}</div>
+              )}
             </div>
           ) : (
             <button
@@ -866,7 +927,7 @@ export default function HomePage() {
                 marginBottom: 20,
                 animation: "floatUp 0.4s cubic-bezier(0.16,1,0.3,1) both",
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 12,
                     background: "rgba(52,211,153,0.15)",
@@ -883,22 +944,116 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-                <p style={{ margin: 0, fontSize: 13, color: "rgba(200,210,255,0.65)", lineHeight: 1.6 }}>
-                  You can now send generated audio briefings directly to your Telegram.
-                  Use the &quot;Send to Telegram&quot; button after generating audio.
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "rgba(200,210,255,0.65)", lineHeight: 1.6 }}>
+                  Audio briefings can now be sent straight to your Telegram. Send a test to make sure it works.
                 </p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={handleTestTelegram}
+                    disabled={tgTesting}
+                    style={{
+                      flex: 1, height: 42, borderRadius: 11,
+                      background: tgTestSent ? "rgba(52,211,153,0.18)" : "rgba(42,171,238,0.12)",
+                      border: `1px solid ${tgTestSent ? "rgba(52,211,153,0.4)" : "rgba(42,171,238,0.35)"}`,
+                      color: tgTestSent ? "#34d399" : "#2AABEE",
+                      fontSize: 13, fontWeight: 600,
+                      cursor: tgTesting ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                      fontFamily: "'Inter', sans-serif", transition: "all 0.2s",
+                    }}
+                  >
+                    {tgTestSent ? "✓ Test sent" : tgTesting ? <><Spinner /> Sending…</> : "Send test message"}
+                  </button>
+                  <button
+                    onClick={handleDisconnectTelegram}
+                    style={{
+                      height: 42, padding: "0 18px", borderRadius: 11,
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,70,70,0.25)",
+                      color: "rgba(255,120,120,0.85)",
+                      fontSize: 13, fontWeight: 600, cursor: "pointer",
+                      fontFamily: "'Inter', sans-serif", transition: "all 0.2s",
+                    }}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+            ) : tgConnecting ? (
+              /* Waiting for the user to press Start in Telegram */
+              <div style={{
+                background: "rgba(42,171,238,0.06)",
+                border: "1px solid rgba(42,171,238,0.2)",
+                borderRadius: 16, padding: "24px 22px",
+                marginBottom: 16, textAlign: "center",
+                animation: "floatUp 0.4s cubic-bezier(0.16,1,0.3,1) both",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 12 }}>
+                  <Spinner />
+                  <span style={{ fontSize: 14.5, fontWeight: 700, color: "#2AABEE" }}>
+                    Waiting for Telegram…
+                  </span>
+                </div>
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "rgba(200,210,255,0.65)", lineHeight: 1.65 }}>
+                  A Telegram chat with our bot just opened. Press <strong>START</strong> there —
+                  this window will update automatically once you do.
+                </p>
+                <button
+                  onClick={handleConnectTelegram}
+                  style={{
+                    height: 38, padding: "0 18px", borderRadius: 10,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(42,171,238,0.3)",
+                    color: "#2AABEE", fontSize: 12.5, fontWeight: 600,
+                    cursor: "pointer", fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  Didn&apos;t open? Reopen Telegram
+                </button>
               </div>
             ) : (
               <>
-                <p style={{ fontSize: 13.5, color: "rgba(200,210,255,0.6)", lineHeight: 1.65, marginBottom: 20 }}>
-                  Click the button below and confirm in Telegram. No extra steps required.
+                <p style={{ fontSize: 13.5, color: "rgba(200,210,255,0.6)", lineHeight: 1.65, marginBottom: 18 }}>
+                  Tap below — we&apos;ll open a chat with our bot. Just press <strong>START</strong> and
+                  you&apos;re linked. No phone number, no codes.
                 </p>
-                {/* Telegram Login Widget injects here */}
-                <div
-                  id="tg-widget-container"
-                  style={{ display: "flex", justifyContent: "center", minHeight: 52, marginBottom: 8 }}
-                />
+                <button
+                  id="telegram-connect-btn"
+                  onClick={handleConnectTelegram}
+                  style={{
+                    width: "100%", height: 52, borderRadius: 14,
+                    background: "linear-gradient(135deg, #2AABEE, #229ED9)",
+                    border: "none", color: "#fff",
+                    fontSize: 15, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                    cursor: "pointer", fontFamily: "'Inter', sans-serif",
+                    boxShadow: "0 0 30px rgba(42,171,238,0.4), 0 4px 16px rgba(0,0,0,0.3)",
+                    transition: "transform 0.2s, box-shadow 0.2s", marginBottom: 8,
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 0 44px rgba(42,171,238,0.55), 0 8px 20px rgba(0,0,0,0.3)";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 0 30px rgba(42,171,238,0.4), 0 4px 16px rgba(0,0,0,0.3)";
+                  }}
+                >
+                  <TelegramIcon size={18} color="#fff" />
+                  Open Telegram &amp; Connect
+                </button>
               </>
+            )}
+
+            {/* Inline error */}
+            {tgError && !tgConnected && (
+              <div style={{
+                background: "rgba(255,70,70,0.07)", border: "1px solid rgba(255,70,70,0.2)",
+                borderRadius: 10, padding: "10px 14px", marginTop: 4,
+                fontSize: 12.5, color: "#ff7070",
+              }}>
+                ⚠ {tgError}
+              </div>
             )}
 
             {/* Footer note */}

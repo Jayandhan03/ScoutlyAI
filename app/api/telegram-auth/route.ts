@@ -3,27 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectToDatabase } from "@/lib/mongodb";
 import TelegramLink from "@/models/TelegramLink";
+import TelegramLinkToken from "@/models/TelegramLinkToken";
 import crypto from "crypto";
 
-function verifyTelegramHash(body: Record<string, string>): boolean {
-  const { hash, ...fields } = body;
-  const dataCheckString = Object.keys(fields)
-    .sort()
-    .map((k) => `${k}=${fields[k]}`)
-    .join("\n");
-  const secretKey = crypto
-    .createHash("sha256")
-    .update(process.env.TELEGRAM_BOT_TOKEN!)
-    .digest();
-  const calculated = crypto
-    .createHmac("sha256", secretKey)
-    .update(dataCheckString)
-    .digest("hex");
-  // constant-time compare
-  return crypto.timingSafeEqual(Buffer.from(calculated, "hex"), Buffer.from(hash, "hex"));
-}
+const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME ?? "UrNewsAI_bot";
 
-// GET — check if the current session user already has Telegram linked
+// GET — is the current session user linked to Telegram?
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -43,50 +28,52 @@ export async function GET() {
   }
 }
 
-// POST — receive widget auth payload, verify, and save
-export async function POST(req: Request) {
+// POST — mint a one-time token and return the bot deep-link to open.
+export async function POST() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { id, first_name, username, auth_date, hash, photo_url } = body;
-
-    if (!id || !hash || !auth_date) {
-      return NextResponse.json({ success: false, error: "Invalid Telegram auth data" }, { status: 400 });
-    }
-
-    // Build the data check string fields (only include fields that exist)
-    const toVerify: Record<string, string> = {
-      id: String(id),
-      auth_date: String(auth_date),
-      hash,
-    };
-    if (first_name) toVerify.first_name = first_name;
-    if (username) toVerify.username = username;
-    if (photo_url) toVerify.photo_url = photo_url;
-
-    if (!verifyTelegramHash(toVerify)) {
-      return NextResponse.json({ success: false, error: "Invalid Telegram signature" }, { status: 403 });
-    }
-
-    // Reject auth older than 24 hours
-    if (Math.floor(Date.now() / 1000) - Number(auth_date) > 86400) {
-      return NextResponse.json({ success: false, error: "Telegram auth expired" }, { status: 403 });
-    }
-
     await connectToDatabase();
-    await TelegramLink.findOneAndUpdate(
+
+    const token = crypto.randomBytes(24).toString("hex");
+    // One pending token per user — replace any previous attempt.
+    await TelegramLinkToken.findOneAndUpdate(
       { email: session.user.email },
-      { chatId: String(id), telegramId: String(id), username, firstName: first_name, linkedAt: new Date() },
+      { token, email: session.user.email, createdAt: new Date() },
       { upsert: true, new: true }
     );
 
-    return NextResponse.json({ success: true, first_name, username });
-  } catch (err: any) {
-    console.error("[telegram-auth]", err?.message);
-    return NextResponse.json({ success: false, error: err.message ?? "Unexpected error" }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      deepLink: `https://t.me/${BOT_USERNAME}?start=${token}`,
+      botUsername: BOT_USERNAME,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unexpected error";
+    console.error("[telegram-auth POST]", message);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
+// DELETE — unlink the current user's Telegram.
+export async function DELETE() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+    }
+
+    await connectToDatabase();
+    await TelegramLink.deleteOne({ email: session.user.email });
+    await TelegramLinkToken.deleteOne({ email: session.user.email });
+
+    return NextResponse.json({ success: true });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unexpected error";
+    console.error("[telegram-auth DELETE]", message);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

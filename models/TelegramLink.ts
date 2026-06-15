@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface ITelegramLink extends Document {
   email: string;
   chatId: string;
-  telegramId: string;
+  telegramId?: string;
   username?: string;
   firstName?: string;
   linkedAt: Date;
@@ -12,7 +12,7 @@ export interface ITelegramLink extends Document {
 const TelegramLinkSchema = new Schema<ITelegramLink>({
   email: { type: String, required: true, unique: true, index: true, lowercase: true },
   chatId: { type: String, required: true },
-  telegramId: { type: String, required: true },
+  telegramId: { type: String },
   username: { type: String },
   firstName: { type: String },
   linkedAt: { type: Date, default: Date.now },
