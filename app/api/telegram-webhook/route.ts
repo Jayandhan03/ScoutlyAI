@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       if (!token) {
         await sendMessage(
           chatId,
-          `👋 *Welcome to YourNews AI!*\n\nTo link your account, open the YourNews app and tap *Connect with Telegram* — that link brings you back here automatically.`
+          `👋 *Welcome to ScoutlyAI!*\n\nTo link your account, open the ScoutlyAI app and tap *Connect with Telegram* — that link brings you back here automatically.`
         );
         return NextResponse.json({ ok: true });
       }
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       if (!pending) {
         await sendMessage(
           chatId,
-          `⚠️ This link has expired. Please go back to the YourNews app and tap *Connect with Telegram* again.`
+          `⚠️ This link has expired. Please go back to the ScoutlyAI app and tap *Connect with Telegram* again.`
         );
         return NextResponse.json({ ok: true });
       }
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
       await sendMessage(
         chatId,
-        `✅ *Connected!* Your YourNews account is now linked.\n\nGenerate an audio briefing in the app and tap *Send to Telegram* — it'll arrive right here. 🎙`
+        `✅ *Connected!* Your ScoutlyAI account is now linked.\n\nGenerate an audio briefing in the app and tap *Send to Telegram* — it'll arrive right here. 🎙`
       );
     }
 

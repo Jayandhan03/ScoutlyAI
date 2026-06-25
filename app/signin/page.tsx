@@ -19,9 +19,9 @@ export default function SignInPage() {
     return (
       <div style={{
         minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(108,143,255,0.13) 0%, transparent 70%), #070711",
+        background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(77,127,255,0.13) 0%, transparent 70%), #070a12",
       }}>
-        <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid rgba(108,143,255,0.2)", borderTopColor: "#6c8fff", animation: "spin 0.8s linear infinite" }} />
+        <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid rgba(77,127,255,0.2)", borderTopColor: "#4d7fff", animation: "spin 0.8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -34,7 +34,7 @@ export default function SignInPage() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(108,143,255,0.15) 0%, transparent 70%), #070711",
+      background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(77,127,255,0.15) 0%, transparent 70%), #070a12",
       fontFamily: "'Inter', sans-serif",
       padding: "20px",
     }}>
@@ -42,12 +42,12 @@ export default function SignInPage() {
       {/* Ambient glow blobs */}
       <div style={{
         position: "fixed", top: "20%", left: "15%", width: 400, height: 400,
-        borderRadius: "50%", background: "rgba(108,143,255,0.06)",
+        borderRadius: "50%", background: "rgba(77,127,255,0.06)",
         filter: "blur(80px)", pointerEvents: "none",
       }} />
       <div style={{
         position: "fixed", bottom: "20%", right: "15%", width: 350, height: 350,
-        borderRadius: "50%", background: "rgba(167,139,250,0.07)",
+        borderRadius: "50%", background: "rgba(139,92,246,0.07)",
         filter: "blur(80px)", pointerEvents: "none",
       }} />
 
@@ -59,7 +59,7 @@ export default function SignInPage() {
         borderRadius: 28,
         padding: "48px 40px 44px",
         backdropFilter: "blur(24px)",
-        boxShadow: "0 0 80px rgba(108,143,255,0.1), 0 32px 64px rgba(0,0,0,0.4)",
+        boxShadow: "0 0 80px rgba(77,127,255,0.1), 0 32px 64px rgba(0,0,0,0.4)",
         animation: "floatUp 0.6s cubic-bezier(0.16,1,0.3,1) both",
         position: "relative",
         zIndex: 1,
@@ -69,23 +69,23 @@ export default function SignInPage() {
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 10,
-            fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 800,
+            fontFamily: "'Sora', sans-serif", fontSize: 26, fontWeight: 800,
             letterSpacing: "-0.03em", color: "#f0f2ff", marginBottom: 12,
           }}>
             <span style={{
               width: 11, height: 11, borderRadius: "50%",
-              background: "linear-gradient(135deg, #6c8fff, #a78bfa)",
-              boxShadow: "0 0 16px rgba(108,143,255,0.7), 0 0 32px rgba(108,143,255,0.3)",
+              background: "linear-gradient(135deg, #4d7fff, #8b5cf6)",
+              boxShadow: "0 0 16px rgba(77,127,255,0.7), 0 0 32px rgba(77,127,255,0.3)",
               display: "inline-block",
               animation: "pulse 2.5s ease-in-out infinite",
             }} />
-            YourNews
+            ScoutlyAI
           </div>
           <p style={{
             margin: 0, fontSize: 14.5, color: "rgba(160,175,220,0.65)",
             lineHeight: 1.6,
           }}>
-            AI-powered audio news, personalized for you
+            Your personal AI scouts, monitoring the entire web for you
           </p>
         </div>
 
@@ -98,14 +98,14 @@ export default function SignInPage() {
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <h1 style={{
             margin: "0 0 8px",
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "'Sora', sans-serif",
             fontSize: 22, fontWeight: 800,
             letterSpacing: "-0.025em", color: "#f0f2ff",
           }}>
             Welcome back
           </h1>
           <p style={{ margin: 0, fontSize: 13.5, color: "rgba(160,175,220,0.6)" }}>
-            Sign in to access your personalized feed
+            Sign in to deploy and manage your scouts
           </p>
         </div>
 
@@ -155,9 +155,9 @@ export default function SignInPage() {
           lineHeight: 1.6,
         }}>
           By signing in, you agree to our{" "}
-          <a href="#" style={{ color: "rgba(108,143,255,0.7)", textDecoration: "none" }}>Terms of Service</a>
+          <a href="#" style={{ color: "rgba(77,127,255,0.7)", textDecoration: "none" }}>Terms of Service</a>
           {" "}and{" "}
-          <a href="#" style={{ color: "rgba(108,143,255,0.7)", textDecoration: "none" }}>Privacy Policy</a>
+          <a href="#" style={{ color: "rgba(77,127,255,0.7)", textDecoration: "none" }}>Privacy Policy</a>
         </p>
       </div>
 
@@ -169,14 +169,14 @@ export default function SignInPage() {
           textDecoration: "none", display: "flex", alignItems: "center", gap: 6,
           transition: "color 0.2s",
         }}
-        onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(108,143,255,0.9)"}
+        onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(77,127,255,0.9)"}
         onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.color = "rgba(160,175,220,0.55)"}
       >
         ← Back to home
       </a>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap');
         @keyframes floatUp {
           from { opacity: 0; transform: translateY(24px); }
           to   { opacity: 1; transform: translateY(0); }

@@ -22,15 +22,116 @@ function Waveform() {
   );
 }
 
+/* ── Waitlist email capture (wired to /api/waitlist) ── */
+function WaitlistForm({ source, variant = "card" }: { source: string; variant?: "card" | "footer" }) {
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (state === "loading") return;
+    setState("loading");
+    setMessage("");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setState("done");
+        setMessage(data.message ?? "You're on the list!");
+        setEmail("");
+      } else {
+        setState("error");
+        setMessage(data.error ?? "Something went wrong. Try again.");
+      }
+    } catch {
+      setState("error");
+      setMessage("Network error. Please try again.");
+    }
+  };
+
+  if (variant === "footer") {
+    return (
+      <>
+        <form className="footer-subscribe" onSubmit={submit}>
+          <input
+            type="email"
+            placeholder="Your email address"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+          />
+          <button type="submit" aria-label="Join waitlist">{state === "loading" ? "…" : "→"}</button>
+        </form>
+        <p style={{ fontSize: 12, color: state === "error" ? "#fb7185" : "var(--text-muted)", margin: "8px 0 0", lineHeight: 1.6 }}>
+          {message || "Be first to deploy your scouts. Early access + product updates."}
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <form className="waitlist-form" onSubmit={submit}>
+      <input
+        type="email"
+        placeholder="you@email.com"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        required
+      />
+      <button type="submit" className="btn-outline" disabled={state === "loading"}>
+        {state === "loading" ? "Joining…" : state === "done" ? "Joined ✓" : "Join the Waitlist"}
+      </button>
+      {message && (
+        <span className="waitlist-msg" style={{ color: state === "error" ? "#fb7185" : "var(--emerald)" }}>
+          {message}
+        </span>
+      )}
+    </form>
+  );
+}
+
 const stats = [
-  { value: "50k+", label: "Daily listeners" },
-  { value: "120+", label: "News sources" },
-  { value: "20+", label: "Languages" },
-  { value: "< 2s", label: "Delivery speed" },
+  { value: "24/7", label: "Continuous monitoring" },
+  { value: "∞", label: "Topics to scout" },
+  { value: "20+", label: "Languages & voices" },
+  { value: "< 2s", label: "Briefing delivery" },
 ];
+
+/* Life aspects your scouts cover */
+const domains = ["Finance", "Jobs", "Law", "Business", "Tech", "Health", "Real Estate", "Sports", "Crypto", "Politics"];
+
+const scouts = [
+  { icon: "💹", title: "Finance & Markets", desc: "Stocks, crypto, earnings and macro moves — the moment they break.", accent: "#34d399" },
+  { icon: "💼", title: "Jobs & Careers", desc: "Fresh roles, hiring trends and openings matched to your profile.", accent: "#4d7fff" },
+  { icon: "⚖️", title: "Law & Policy", desc: "Regulations, rulings and legal shifts that actually affect you.", accent: "#8b5cf6" },
+  { icon: "🏢", title: "Business & Startups", desc: "Funding rounds, competitors, deals and industry movements.", accent: "#38bdf8" },
+  { icon: "🧬", title: "Tech & Science", desc: "Product launches, research breakthroughs and the next big thing.", accent: "#f472b6" },
+  { icon: "🏥", title: "Health & Wellness", desc: "Studies, advisories and trends for a smarter, healthier you.", accent: "#fb923c" },
+  { icon: "🏡", title: "Real Estate", desc: "Listings, mortgage rates and market moves in your area.", accent: "#facc15" },
+  { icon: "⚽", title: "Sports & Culture", desc: "Scores, transfers and the stories you genuinely care about.", accent: "#22d3ee" },
+];
+
+const features = [
+  { icon: "🛰️", title: "Build Your Own Scouts", desc: "Spin up a scout for any topic, source or question. It watches the web around the clock so you never have to.", accent: "#4d7fff" },
+  { icon: "⚡", title: "Real-Time Monitoring", desc: "Scouts track thousands of sources continuously and surface what's new the instant it matters.", accent: "#8b5cf6" },
+  { icon: "💬", title: "Delivered Where You Are", desc: "Audio briefings land natively in Telegram & WhatsApp — no new app to install, no extra tab.", accent: "#38bdf8" },
+  { icon: "🌍", title: "Your Language, 20+ Options", desc: "Get briefed in your language with ultra-realistic neural text-to-speech voices.", accent: "#34d399" },
+  { icon: "🎙️", title: "Custom Voice Tones", desc: "Professional, casual, energetic or calm — pick the voice and tone that fits your vibe.", accent: "#f472b6" },
+  { icon: "⏱️", title: "On Your Schedule", desc: "Real-time, hourly, twice-daily or a custom rhythm. You decide how often your scouts report in.", accent: "#fb923c" },
+];
+
+const languages = ["English", "Español", "हिन्दी", "Français", "Deutsch", "العربية", "中文", "Português"];
+const tones = ["Professional", "Casual", "Energetic", "Calm", "Concise"];
+const frequencies = ["Real-time", "Hourly", "Twice daily", "Daily", "Weekly", "Custom"];
 
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
+  const [activeFreq, setActiveFreq] = useState("Daily");
   const { data: session, status } = useSession();
   useEffect(() => setMounted(true), []);
 
@@ -44,13 +145,14 @@ export default function LandingPage() {
         <div className="landing-nav-inner">
           <div className="landing-logo">
             <span className="logo-dot" />
-            YourNews
+            ScoutlyAI
           </div>
 
           <nav className="landing-nav-links">
-            <a href="#features">Features</a>
+            <a href="#scouts">Scouts</a>
+            <a href="#delivery">Delivery</a>
+            <a href="#schedule">Schedule</a>
             <a href="#how-it-works">How it works</a>
-            <a href="#pricing">Pricing</a>
           </nav>
 
           <div className="landing-nav-actions">
@@ -61,7 +163,8 @@ export default function LandingPage() {
                     <img
                       src={session.user.image}
                       alt={session.user.name ?? "User"}
-                      style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(108,143,255,0.55)", objectFit: "cover" }}
+                      referrerPolicy="no-referrer"
+                      style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid rgba(77,127,255,0.55)", objectFit: "cover" }}
                     />
                   )}
                   <span style={{ fontSize: "0.84rem", color: "rgba(200,210,255,0.75)", fontWeight: 500 }}>
@@ -86,7 +189,7 @@ export default function LandingPage() {
                   className="nav-cta"
                   style={{ cursor: "pointer" }}
                 >
-                  Get Started →
+                  Deploy a Scout →
                 </button>
               </>
             )}
@@ -98,17 +201,18 @@ export default function LandingPage() {
       <section className="hero-section">
         <div className="hero-badge">
           <span className="badge-dot" />
-          AI-powered audio news platform
+          Personal AI intelligence for every aspect of life
         </div>
 
         <h1 className="hero-title">
-          Your Daily News,<br />
-          <span className="hero-highlight">Delivered as Audio.</span>
+          Deploy AI Scouts to<br />
+          <span className="hero-highlight">Monitor the Entire Web.</span>
         </h1>
 
         <p className="hero-sub">
-          Receive personalized AI-curated news briefings directly to WhatsApp or Telegram.
-          Listen while you commute, exercise, or start your morning ritual.
+          ScoutlyAI is your personal virtual assistant for everything that matters —
+          finance, jobs, law, business and beyond. Create custom scouts that watch the web 24/7
+          and keep you updated with the most current intel as crisp audio briefings.
         </p>
 
         <div className="hero-actions">
@@ -121,10 +225,10 @@ export default function LandingPage() {
               className="btn-primary"
               style={{ cursor: "pointer" }}
             >
-              Get Started Free →
+              Deploy Your First Scout →
             </button>
           )}
-          <a href="#how-it-works" className="btn-secondary">View Demo</a>
+          <a href="#how-it-works" className="btn-secondary">See How It Works</a>
         </div>
 
         {/* Stats strip */}
@@ -133,11 +237,11 @@ export default function LandingPage() {
           padding: "28px 0 8px", borderTop: "1px solid rgba(255,255,255,0.06)", width: "100%", marginTop: 8
         }}>
           {stats.map(s => (
-            <div key={s.value} style={{ textAlign: "center" }}>
+            <div key={s.label} style={{ textAlign: "center" }}>
               <div style={{
                 fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 800,
                 letterSpacing: "-0.03em",
-                background: "linear-gradient(135deg, #6c8fff, #a78bfa)",
+                background: "linear-gradient(135deg, #4d7fff, #8b5cf6)",
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
                 backgroundClip: "text"
               }}>{s.value}</div>
@@ -152,16 +256,16 @@ export default function LandingPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
             <div style={{
               width: 36, height: 36, borderRadius: "50%",
-              background: "linear-gradient(135deg, #6c8fff, #a78bfa)",
+              background: "linear-gradient(135deg, #4d7fff, #8b5cf6)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, boxShadow: "0 0 16px rgba(108,143,255,0.5)"
-            }}>📡</div>
+              fontSize: 14, boxShadow: "0 0 16px rgba(77,127,255,0.5)"
+            }}>🛰️</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
-                Morning Briefing — AI Edition
+                Finance Scout — Morning Briefing
               </div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                Generated 2 min ago · 3:42 duration
+                Generated 2 min ago · 3:42 · English · Professional tone
               </div>
             </div>
             <div style={{
@@ -187,44 +291,58 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ TECH BAR ══ */}
-      <div style={{
-        background: "rgba(108,143,255,0.04)",
-        borderTop: "1px solid var(--border-subtle)",
-        borderBottom: "1px solid var(--border-subtle)",
-        padding: "20px 28px",
-        position: "relative", zIndex: 1,
-      }}>
-        <div style={{
-          maxWidth: 1200, margin: "0 auto",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          gap: 48, flexWrap: "wrap"
-        }}>
-          {["Powered by LangChain + Tavily", "Neural TTS via Google Cloud", "WhatsApp & Telegram native", "Zero-latency audio pipeline"].map(t => (
-            <span key={t} style={{
-              fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)",
-              display: "flex", alignItems: "center", gap: 8, letterSpacing: "0.01em"
-            }}>
-              <span style={{
-                width: 5, height: 5, borderRadius: "50%",
-                background: "var(--accent)", display: "inline-block",
-                boxShadow: "0 0 6px var(--accent)"
-              }} />
-              {t}
+      {/* ══ DOMAIN MARQUEE ══ */}
+      <div className="domain-bar">
+        <div className="domain-track">
+          {[...domains, ...domains].map((d, i) => (
+            <span key={i} className="domain-chip">
+              <span className="domain-dot" />
+              {d}
             </span>
           ))}
         </div>
       </div>
 
-      {/* ══ FEATURES ══ */}
-      <section id="features" className="features-section">
+      {/* ══ SCOUTS / CATEGORIES ══ */}
+      <section id="scouts" className="features-section">
         <div style={{ textAlign: "center", marginBottom: 52 }}>
           <div style={{
             display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
             textTransform: "uppercase", color: "var(--accent)", marginBottom: 14,
             padding: "5px 16px", background: "var(--accent-dim)", border: "1px solid var(--accent-border)",
             borderRadius: "999px"
-          }}>What makes us different</div>
+          }}>One scout for every part of your life</div>
+          <h2 style={{
+            fontFamily: "var(--font-display)", fontSize: "clamp(28px,4vw,44px)",
+            fontWeight: 800, letterSpacing: "-0.035em", margin: 0, lineHeight: 1.15
+          }}>Personal intelligence,<br /><span className="hero-highlight">across everything you care about.</span></h2>
+          <p style={{ maxWidth: 560, margin: "18px auto 0", fontSize: 15, lineHeight: 1.7, color: "var(--text-secondary)" }}>
+            Deploy as many scouts as you want. Each one keeps watch over a slice of your world and
+            briefs you with the latest, most relevant updates — in audio.
+          </p>
+        </div>
+
+        <div className="scout-grid">
+          {scouts.map(s => (
+            <div className="scout-card" key={s.title}>
+              <div className="scout-icon" style={{ background: `${s.accent}18`, border: `1px solid ${s.accent}30` }}>{s.icon}</div>
+              <h3 className="feature-title">{s.title}</h3>
+              <p className="feature-desc">{s.desc}</p>
+              <span className="scout-tag" style={{ color: s.accent }}>● Scout active</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══ FEATURES ══ */}
+      <section id="features" className="features-section" style={{ paddingTop: 0 }}>
+        <div style={{ textAlign: "center", marginBottom: 52 }}>
+          <div style={{
+            display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
+            textTransform: "uppercase", color: "var(--violet)", marginBottom: 14,
+            padding: "5px 16px", background: "var(--violet-dim)", border: "1px solid rgba(139,92,246,0.22)",
+            borderRadius: "999px"
+          }}>What makes ScoutlyAI different</div>
           <h2 style={{
             fontFamily: "var(--font-display)", fontSize: "clamp(28px,4vw,44px)",
             fontWeight: 800, letterSpacing: "-0.035em", margin: 0, lineHeight: 1.15
@@ -232,14 +350,7 @@ export default function LandingPage() {
         </div>
 
         <div className="features-grid">
-          {[
-            { icon: "🎛️", title: "Deep Customization", desc: "Select your favorite topics, trusted sources and use AI to tailor a news feed that matches your morning routine perfectly.", accent: "#6c8fff" },
-            { icon: "⚡", title: "Instant Delivery", desc: "No delays. Our AI processes and generates your audio briefing in real-time, delivered the moment it's ready.", accent: "#a78bfa" },
-            { icon: "💬", title: "Native Chat Experience", desc: "No new apps. Works natively in WhatsApp or Telegram with interactive voice chat controls right in your thread.", accent: "#38bdf8" },
-            { icon: "🧠", title: "Adaptive Intelligence", desc: "The more you listen, the smarter your briefing becomes. Our AI learns your preferences and optimizes your feed.", accent: "#34d399" },
-            { icon: "🌍", title: "20+ Languages", desc: "Receive your briefings in any of 20+ supported languages with ultra-realistic neural text-to-speech voices.", accent: "#f472b6" },
-            { icon: "📊", title: "Source Analytics", desc: "Full transparency on your news sources. Track reliability scores, publication history, and bias ratings.", accent: "#fb923c" },
-          ].map(f => (
+          {features.map(f => (
             <div className="feature-pill" key={f.title}>
               <div style={{
                 width: 48, height: 48, borderRadius: 14, marginBottom: 18,
@@ -253,41 +364,45 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ HOW IT WORKS ══ */}
-      <section id="how-it-works" className="briefing-section">
+      {/* ══ DELIVERY / INTEGRATION ══ */}
+      <section id="delivery" className="briefing-section">
         <div className="briefing-text">
           <div style={{
             fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
-            color: "var(--violet)", marginBottom: 18,
+            color: "var(--cyan)", marginBottom: 18,
             display: "inline-flex", alignItems: "center", gap: 7,
-            padding: "5px 14px", background: "var(--violet-dim)",
-            border: "1px solid rgba(167,139,250,0.22)", borderRadius: "999px"
-          }}>How it works</div>
+            padding: "5px 14px", background: "var(--cyan-dim)",
+            border: "1px solid var(--cyan-border)", borderRadius: "999px"
+          }}>Connect your scouts</div>
           <h2 className="briefing-title">
-            The briefing you&apos;ll<br />
-            <span className="hero-highlight">actually look forward to.</span>
+            Your scouts speak your language —<br />
+            <span className="hero-highlight">on the chat app you already use.</span>
           </h2>
           <p className="briefing-desc">
-            Seamlessly integrated into your existing chat threads. YourNews AI sends you a clean,
-            studio-quality audio file every morning — or whenever you request an update.
+            Link your scouts to <strong style={{ color: "var(--text-primary)" }}>Telegram</strong> and{" "}
+            <strong style={{ color: "var(--text-primary)" }}>WhatsApp</strong> and receive studio-quality
+            audio briefings right in your threads. Tune every detail to your preferences — the language
+            you think in and the voice tone that suits the moment.
           </p>
-          <ul className="briefing-list" style={{ listStyle: "none", padding: 0 }}>
-            {[
-              "High-fidelity neural text-to-speech",
-              "Supports 20+ global languages",
-              "Variable playback speeds",
-              "Instant on-demand regeneration",
-            ].map(item => (
-              <li key={item} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14.5, color: "var(--text-secondary)" }}>
-                <span style={{
-                  width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg, #6c8fff, #a78bfa)",
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10
-                }}>✓</span>
-                {item}
-              </li>
-            ))}
-          </ul>
+
+          <div className="channel-badges">
+            <span className="channel-chip"><span className="channel-ic">✈️</span> Telegram</span>
+            <span className="channel-chip"><span className="channel-ic">💬</span> WhatsApp</span>
+          </div>
+
+          <div className="pref-block">
+            <div className="pref-label">Languages</div>
+            <div className="pref-chips">
+              {languages.map(l => <span key={l} className="pref-chip">{l}</span>)}
+            </div>
+          </div>
+
+          <div className="pref-block">
+            <div className="pref-label">Voice tones</div>
+            <div className="pref-chips">
+              {tones.map(t => <span key={t} className="pref-chip pref-chip--tone">{t}</span>)}
+            </div>
+          </div>
         </div>
 
         <div className="briefing-mock">
@@ -295,7 +410,7 @@ export default function LandingPage() {
             <div className="mock-header">
               <div className="mock-avatar" />
               <div>
-                <div className="mock-name">YourNews AI</div>
+                <div className="mock-name">ScoutlyAI · Finance Scout</div>
                 <div className="mock-status">● Online</div>
               </div>
               <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-muted)" }}>9:00 AM</div>
@@ -303,7 +418,7 @@ export default function LandingPage() {
             <div className="mock-body">
               <div className="mock-bubble">
                 <div className="mock-bubble-title">
-                  🌅 Good morning! Here is your personalized briefing for today
+                  🛰️ Good morning! Your Finance Scout spotted 3 market-moving updates overnight.
                 </div>
               </div>
               <div className="mock-audio-pill">
@@ -316,14 +431,126 @@ export default function LandingPage() {
                 <div className="pill-time">0:45 / 3:12</div>
               </div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", paddingLeft: 4 }}>
-                3 articles · AI, Climate, Finance
+                🌐 English · 🎙️ Professional tone · ✈️ via Telegram
               </div>
               <div className="mock-input-row">
-                <div className="mock-input">Ask for more on any topic…</div>
+                <div className="mock-input">Ask your scout for more detail…</div>
                 <div className="mock-mic">🎤</div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ══ SCHEDULE ══ */}
+      <section id="schedule" className="briefing-section" style={{ direction: "rtl" }}>
+        <div className="briefing-text" style={{ direction: "ltr" }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+            color: "var(--emerald)", marginBottom: 18,
+            display: "inline-flex", alignItems: "center", gap: 7,
+            padding: "5px 14px", background: "var(--emerald-dim)",
+            border: "1px solid rgba(52,211,153,0.24)", borderRadius: "999px"
+          }}>Your rhythm, your rules</div>
+          <h2 className="briefing-title">
+            You set the cadence.<br />
+            <span className="hero-highlight">Your scouts keep the time.</span>
+          </h2>
+          <p className="briefing-desc">
+            Want a briefing the second something breaks? Or a calm summary once a day with your coffee?
+            Pick exactly how often each scout reports in — and set the times that fit your schedule.
+            ScoutlyAI handles the rest, automatically.
+          </p>
+
+          <div className="freq-pills">
+            {frequencies.map(f => (
+              <button
+                key={f}
+                className={`freq-pill${activeFreq === f ? " freq-pill--active" : ""}`}
+                onClick={() => setActiveFreq(f)}
+                type="button"
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          <ul className="briefing-list" style={{ listStyle: "none", padding: 0, marginTop: 26 }}>
+            {[
+              "Per-scout delivery frequency",
+              "Pick your exact preferred times",
+              "Quiet hours — no pings while you sleep",
+              "Instant on-demand briefings anytime",
+            ].map(item => (
+              <li key={item} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14.5, color: "var(--text-secondary)" }}>
+                <span style={{
+                  width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                  background: "linear-gradient(135deg, #34d399, #4d7fff)",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10
+                }}>✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="briefing-mock" style={{ direction: "ltr" }}>
+          <div className="schedule-card">
+            <div className="schedule-head">
+              <span style={{ fontSize: 18 }}>⏱️</span>
+              <div>
+                <div className="mock-name">Delivery Schedule</div>
+                <div className="mock-status" style={{ color: "var(--accent)" }}>● {activeFreq}</div>
+              </div>
+            </div>
+            <div className="schedule-rows">
+              {[
+                { scout: "💹 Finance Scout", time: "8:00 AM · 6:00 PM", freq: "Twice daily" },
+                { scout: "💼 Jobs Scout", time: "9:00 AM", freq: "Daily" },
+                { scout: "⚖️ Law & Policy", time: "Mon · 7:30 AM", freq: "Weekly" },
+                { scout: "🏢 Business Scout", time: "As it happens", freq: "Real-time" },
+              ].map(r => (
+                <div className="schedule-row" key={r.scout}>
+                  <div>
+                    <div className="schedule-scout">{r.scout}</div>
+                    <div className="schedule-time">{r.time}</div>
+                  </div>
+                  <span className="schedule-freq">{r.freq}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ HOW IT WORKS ══ */}
+      <section id="how-it-works" className="steps-section">
+        <div style={{ textAlign: "center", marginBottom: 52 }}>
+          <div style={{
+            display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
+            textTransform: "uppercase", color: "var(--accent)", marginBottom: 14,
+            padding: "5px 16px", background: "var(--accent-dim)", border: "1px solid var(--accent-border)",
+            borderRadius: "999px"
+          }}>How it works</div>
+          <h2 style={{
+            fontFamily: "var(--font-display)", fontSize: "clamp(28px,4vw,44px)",
+            fontWeight: 800, letterSpacing: "-0.035em", margin: 0, lineHeight: 1.15
+          }}>From idea to audio briefing<br /><span className="hero-highlight">in three quick steps.</span></h2>
+        </div>
+
+        <div className="steps-grid">
+          {[
+            { n: "01", icon: "🛰️", title: "Create a scout", desc: "Tell ScoutlyAI what to watch — a market, a job board, a legal beat or any topic on your mind." },
+            { n: "02", icon: "🎛️", title: "Set your preferences", desc: "Choose language, voice tone, delivery channel (Telegram or WhatsApp) and how often you want updates." },
+            { n: "03", icon: "🎧", title: "Get audio briefings", desc: "Sit back. Your scouts monitor the web 24/7 and send concise audio briefings right on schedule." },
+          ].map(s => (
+            <div className="step-card" key={s.n}>
+              <div className="step-num">{s.n}</div>
+              <div className="step-icon">{s.icon}</div>
+              <h3 className="feature-title">{s.title}</h3>
+              <p className="feature-desc">{s.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -337,12 +564,12 @@ export default function LandingPage() {
             border: "1px solid rgba(52,211,153,0.24)", borderRadius: "999px",
             padding: "5px 16px", marginBottom: 24
           }}>
-            Free forever — no card required
+            Free to start — no card required
           </div>
-          <h2 className="cta-title">Start Listening Today.</h2>
+          <h2 className="cta-title">Deploy your first scout today.</h2>
           <p className="cta-sub">
-            Stop scrolling. Start listening. Join 50,000+ professionals who stay informed
-            through our audio-first, AI-powered news platform.
+            Stop scrolling endless feeds. Let your personal AI scouts watch the web and brief you on
+            everything that matters — in your language, your voice and your schedule.
           </p>
           <div className="cta-actions">
             {session ? (
@@ -357,7 +584,9 @@ export default function LandingPage() {
                 Continue with Google →
               </button>
             )}
-            <a href="#" className="btn-outline">Join the Waitlist</a>
+          </div>
+          <div style={{ marginTop: 28 }}>
+            <WaitlistForm source="landing-cta" />
           </div>
         </div>
       </section>
@@ -368,9 +597,9 @@ export default function LandingPage() {
           <div className="footer-brand">
             <div className="landing-logo">
               <span className="logo-dot" />
-              YourNews
+              ScoutlyAI
             </div>
-            <p>Transforming how we consume information through cutting-edge AI audio generation and real-time personalized intelligence.</p>
+            <p>Your personal AI scouts, monitoring the entire web — turning the latest intel across every aspect of your life into on-demand audio briefings.</p>
             <div className="footer-social">
               <a href="#">Twitter/X</a>
               <a href="#">LinkedIn</a>
@@ -380,10 +609,10 @@ export default function LandingPage() {
 
           <div className="footer-col">
             <h4>Product</h4>
-            <a href="#features">Features</a>
-            <a href="#how-it-works">Voice Link</a>
-            <a href="#">Integrations</a>
-            <a href="#">Changelog</a>
+            <a href="#scouts">Scouts</a>
+            <a href="#delivery">Delivery</a>
+            <a href="#schedule">Schedule</a>
+            <a href="#how-it-works">How it works</a>
           </div>
 
           <div className="footer-col">
@@ -395,19 +624,13 @@ export default function LandingPage() {
           </div>
 
           <div className="footer-col">
-            <h4>Stay in the loop</h4>
-            <div className="footer-subscribe">
-              <input type="email" placeholder="Your email address" />
-              <button>→</button>
-            </div>
-            <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
-              Weekly digest of product updates and new features.
-            </p>
+            <h4>Join the waitlist</h4>
+            <WaitlistForm source="footer" variant="footer" />
           </div>
         </div>
 
         <div className="footer-bottom">
-          <span>© {new Date().getFullYear()} YourNews AI. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} ScoutlyAI. All rights reserved.</span>
           <span>
             <a href="#">Privacy Policy</a>
             {" · "}

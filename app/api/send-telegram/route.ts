@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const tgForm = new FormData();
     tgForm.append("chat_id", link.chatId);
     tgForm.append("audio", audio, audio.name ?? "news_briefing.mp3");
-    tgForm.append("caption", `🎙 *${topic}* — YourNews AI Briefing`);
+    tgForm.append("caption", `🎙 *${topic}* — ScoutlyAI Briefing`);
     tgForm.append("parse_mode", "Markdown");
 
     const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAudio`, {
