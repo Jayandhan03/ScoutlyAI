@@ -1,0 +1,116 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
+import { useState } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
+
+const LINKS = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard#agents", label: "Agents" },
+  { href: "/delivery", label: "Delivery" },
+  { href: "/test-scout", label: "Ask" },
+];
+
+/** Shared top navigation for the signed-in product surfaces. */
+export default function AppNav() {
+  const { data: session } = useSession();
+  const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const isActive = (href: string) => {
+    const base = href.split("#")[0];
+    return pathname === base;
+  };
+
+  return (
+    <header
+      className="glass"
+      style={{
+        position: "sticky", top: 0, zIndex: 50,
+        borderBottom: "1px solid var(--line)",
+      }}
+    >
+      <div className="container between" style={{ height: "var(--nav-h)", display: "flex", alignItems: "center" }}>
+        {/* Brand */}
+        <Link href="/dashboard" className="row" style={{ gap: 10 }}>
+          <span className="mark">S</span>
+          <span style={{ fontWeight: 600, fontSize: "0.98rem", letterSpacing: "-0.02em", color: "var(--ink)" }}>Scoutly</span>
+        </Link>
+
+        {/* Center links */}
+        <nav className="home-nav-links row" style={{ gap: 4, position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+          {LINKS.map(l => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="nav-link"
+              data-active={isActive(l.href)}
+              style={{ padding: "7px 12px", borderRadius: "var(--r-sm)" }}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Right */}
+        <div className="row" style={{ gap: 10 }}>
+          <ThemeToggle />
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              onBlur={() => setTimeout(() => setMenuOpen(false), 120)}
+              className="row"
+              style={{
+                gap: 8, height: 34, padding: "0 8px 0 8px", borderRadius: "var(--r-sm)",
+                border: "1px solid var(--line-2)", background: "var(--surface)", cursor: "pointer", color: "var(--ink)",
+              }}
+            >
+              {session?.user?.image ? (
+                <img src={session.user.image} alt="" referrerPolicy="no-referrer"
+                  style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }} />
+              ) : (
+                <span className="dot" style={{ background: "var(--accent)" }} />
+              )}
+              <span style={{ fontSize: "0.82rem", fontWeight: 500, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {session?.user?.name?.split(" ")[0] ?? "Account"}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.5 }}><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+
+            {menuOpen && (
+              <div
+                className="card"
+                style={{
+                  position: "absolute", top: 42, right: 0, minWidth: 200, padding: 6,
+                  boxShadow: "var(--shadow-lg)", animation: "riseSm 0.14s var(--ease) both",
+                }}
+              >
+                <div style={{ padding: "9px 10px 8px" }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--ink)" }}>{session?.user?.name}</div>
+                  <div style={{ fontSize: "0.72rem", color: "var(--ink-3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{session?.user?.email}</div>
+                </div>
+                <div className="hairline" style={{ margin: "4px 0" }} />
+                <Link href="/dashboard" className="menu-row">Dashboard</Link>
+                <Link href="/delivery" className="menu-row">Delivery channels</Link>
+                <div className="hairline" style={{ margin: "4px 0" }} />
+                <button onClick={() => signOut({ callbackUrl: "/" })} className="menu-row" style={{ width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", color: "var(--danger)" }}>
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        .menu-row {
+          display: block; padding: 9px 10px; border-radius: var(--r-xs);
+          font-size: 0.84rem; color: var(--ink-2); transition: background 0.14s var(--ease), color 0.14s var(--ease);
+        }
+        .menu-row:hover { background: var(--surface-2); color: var(--ink); }
+      `}</style>
+    </header>
+  );
+}

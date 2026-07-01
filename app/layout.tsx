@@ -3,30 +3,41 @@ import type { Metadata } from "next";
 import SessionProvider from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
-  title: "ScoutlyAI — Your Personal AI Scouts for the Entire Web",
+  title: "Scoutly — Your personal intelligence platform",
   description:
-    "Deploy personalized AI scouts to monitor every aspect of your life — finance, jobs, law, business and more — delivered as audio briefings to Telegram & WhatsApp, in your language, voice and schedule.",
+    "A team of AI analysts that monitor the web for you around the clock — across finance, tech, sports, health and any topic you care about — and deliver calm, personalized briefings.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+/* Set the theme before first paint to avoid a flash of the wrong theme. */
+const themeScript = `
+(function () {
+  try {
+    var t = localStorage.getItem('scoutly-theme');
+    if (t !== 'light' && t !== 'dark') {
+      t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+`;
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Sora:wght@500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;550;600;700;800&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body style={{ background: "#070a12", color: "#f0f2ff", margin: 0 }}>
+      <body>
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );
 }
-
