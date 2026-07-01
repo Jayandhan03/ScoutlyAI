@@ -25,7 +25,7 @@ export async function POST() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: link.chatId,
-        text: "✅ *ScoutlyAI test successful!*\n\nYour Telegram is connected. Audio briefings will be delivered here.",
+        text: "✅ *Leora test successful!*\n\nYour Telegram is connected. Audio briefings will be delivered here.",
         parse_mode: "Markdown",
       }),
       signal: AbortSignal.timeout(10_000),

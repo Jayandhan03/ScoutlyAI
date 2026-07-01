@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useCallback } from "react";
-import type { Scout, ScoutPlatform } from "@/app/api/scouts/route";
+import type { Agent, AgentPlatform } from "@/app/api/agents/route";
 import AppNav from "@/components/AppNav";
 
 /* ── Icons ── */
@@ -74,7 +74,7 @@ function formatNext(iso?: string | null): string {
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [scouts, setScouts] = useState<Scout[] | null>(null);
+  const [agents, setAgents] = useState<Agent[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState>(null);
   const [ask, setAsk] = useState("");
@@ -86,9 +86,9 @@ export default function Dashboard() {
     if (status !== "authenticated") return;
     (async () => {
       try {
-        const res = await fetch("/api/scouts");
+        const res = await fetch("/api/agents");
         const data = await res.json();
-        if (data.success) setScouts(data.scouts); else setErr(data.error ?? "Could not load agents.");
+        if (data.success) setAgents(data.agents); else setErr(data.error ?? "Could not load agents.");
       } catch { setErr("Network error."); }
     })();
   }, [status]);
@@ -105,30 +105,30 @@ export default function Dashboard() {
     return () => { window.removeEventListener("resize", close); window.removeEventListener("scroll", close, true); document.removeEventListener("keydown", onKey); };
   }, [menu]);
 
-  const patch = useCallback((id: string, up: (s: Scout) => Scout) => setScouts(p => p?.map(s => s.id === id ? up(s) : s) ?? p), []);
+  const patch = useCallback((id: string, up: (s: Agent) => Agent) => setAgents(p => p?.map(s => s.id === id ? up(s) : s) ?? p), []);
   const openMenu = (e: React.MouseEvent, id: string, field: Field) => {
     e.stopPropagation();
     if (menu && menu.id === id && menu.field === field) return setMenu(null);
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setMenu({ id, field, x: Math.min(r.left, window.innerWidth - 250), y: r.bottom + 6 });
   };
-  const togglePlatform = (list: ScoutPlatform[], platform: "telegram" | "whatsapp"): ScoutPlatform[] => {
+  const togglePlatform = (list: AgentPlatform[], platform: "telegram" | "whatsapp"): AgentPlatform[] => {
     const ex = list.find(p => p.platform === platform);
     if (ex) return list.map(p => p.platform === platform ? { ...p, connected: !p.connected } : p);
     return [...list, { platform, connected: true, handle: null }];
   };
 
   const summary = useMemo(() => {
-    const l = scouts ?? [];
+    const l = agents ?? [];
     const active = l.filter(s => s.status === "active").length;
     const sources = l.reduce((n, s) => n + (s.stats.sourcesTracked || 0), 0);
     const briefs = l.reduce((n, s) => n + (s.stats.briefingsSent || 0), 0);
     return { total: l.length, active, sources, briefs };
-  }, [scouts]);
+  }, [agents]);
 
-  const activeScout = menu ? scouts?.find(s => s.id === menu.id) : undefined;
+  const activeAgent = menu ? agents?.find(s => s.id === menu.id) : undefined;
   const first = session?.user?.name?.split(" ")[0] ?? "there";
-  const activeList = (scouts ?? []).filter(s => s.status === "active");
+  const activeList = (agents ?? []).filter(s => s.status === "active");
 
   if (status === "loading" || status === "unauthenticated") {
     return <div className="row center" style={{ minHeight: "100vh" }}><span className="spinner" /></div>;
@@ -161,7 +161,7 @@ export default function Dashboard() {
 
         {/* ── Ask bar ── */}
         <form
-          onSubmit={(e) => { e.preventDefault(); if (ask.trim()) router.push(`/test-scout?q=${encodeURIComponent(ask)}`); }}
+          onSubmit={(e) => { e.preventDefault(); if (ask.trim()) router.push(`/test-agent?q=${encodeURIComponent(ask)}`); }}
           className="card rise-1"
           style={{ display: "flex", alignItems: "center", gap: 12, padding: "6px 6px 6px 16px", marginBottom: 26 }}
         >
@@ -217,7 +217,7 @@ export default function Dashboard() {
               <span className="badge badge-muted">{summary.active} live</span>
             </div>
             <div style={{ padding: "6px 8px" }}>
-              {(scouts ?? []).slice(0, 6).map((s) => {
+              {(agents ?? []).slice(0, 6).map((s) => {
                 const on = s.status === "active";
                 return (
                   <div key={s.id} className="row between" style={{ padding: "11px 12px", borderRadius: "var(--r-sm)" }}>
@@ -235,7 +235,7 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-              {scouts === null && [0, 1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 30, margin: "10px 12px" }} />)}
+              {agents === null && [0, 1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 30, margin: "10px 12px" }} />)}
             </div>
           </div>
         </div>
@@ -246,19 +246,19 @@ export default function Dashboard() {
             <h2 className="t-h3" style={{ marginBottom: 4 }}>Your agents</h2>
             <p className="t-muted" style={{ fontSize: "0.85rem" }}>Click any cell to tune an agent — its voice, language, cadence or delivery.</p>
           </div>
-          <Link href="/test-scout" className="btn btn-secondary btn-sm">{I.plus()} New agent</Link>
+          <Link href="/test-agent" className="btn btn-secondary btn-sm">{I.plus()} New agent</Link>
         </div>
 
         {err && <div className="card" style={{ padding: 16, borderColor: "var(--danger)", color: "var(--danger)", fontSize: "0.85rem", marginBottom: 16 }}>{err}</div>}
 
-        {scouts === null && !err ? (
+        {agents === null && !err ? (
           <div className="card skeleton" style={{ height: 300 }} />
-        ) : scouts && scouts.length === 0 ? (
+        ) : agents && agents.length === 0 ? (
           <div className="card" style={{ padding: "56px 24px", textAlign: "center" }}>
             <div className="row center" style={{ width: 52, height: 52, borderRadius: "var(--r-md)", background: "var(--accent-soft)", color: "var(--accent)", margin: "0 auto 16px" }}>{I.bolt()}</div>
             <div className="t-h3" style={{ marginBottom: 8 }}>Deploy your first agent</div>
             <p className="t-2" style={{ maxWidth: 380, margin: "0 auto 20px", fontSize: "0.9rem" }}>Name a topic — a market, a competitor, a hobby — and an AI agent starts reading the web for you within the minute.</p>
-            <Link href="/test-scout" className="btn btn-primary">{I.plus()} Create an agent</Link>
+            <Link href="/test-agent" className="btn btn-primary">{I.plus()} Create an agent</Link>
           </div>
         ) : (
           <div className="card" style={{ overflow: "hidden", padding: 0 }}>
@@ -270,7 +270,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {scouts?.map(s => {
+                  {agents?.map(s => {
                     const on = s.status === "active";
                     const tg = s.platforms.find(p => p.platform === "telegram");
                     const wa = s.platforms.find(p => p.platform === "whatsapp");
@@ -313,7 +313,7 @@ export default function Dashboard() {
                           <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>
                             <button className="icon-btn" title={on ? "Pause" : "Resume"} onClick={() => patch(s.id, sc => ({ ...sc, status: sc.status === "active" ? "paused" : "active" }))}>{on ? I.pause() : I.play()}</button>
                             <button className="icon-btn" title="Configure" onClick={() => alert(`A full editor for “${s.name}” arrives with the backend. For now, edit any cell inline.`)}>{I.gear()}</button>
-                            <button className="icon-btn danger" title="Remove" onClick={() => { if (confirm(`Remove “${s.name}”? (local only)`)) setScouts(p => p?.filter(x => x.id !== s.id) ?? p); }}>{I.trash()}</button>
+                            <button className="icon-btn danger" title="Remove" onClick={() => { if (confirm(`Remove “${s.name}”? (local only)`)) setAgents(p => p?.filter(x => x.id !== s.id) ?? p); }}>{I.trash()}</button>
                           </div>
                         </td>
                       </tr>
@@ -329,21 +329,21 @@ export default function Dashboard() {
       </main>
 
       {/* ── Popover ── */}
-      {menu && activeScout && (
+      {menu && activeAgent && (
         <div onClick={e => e.stopPropagation()} className="card popover" style={{ left: menu.x, top: menu.y, minWidth: menu.field === "channels" ? 260 : 200 }}>
           {menu.field === "status" && (["active", "paused"] as const).map(v => (
-            <button key={v} className="pop-item" data-on={activeScout.status === v} onClick={() => { patch(menu.id, s => ({ ...s, status: v })); setMenu(null); }}>
+            <button key={v} className="pop-item" data-on={activeAgent.status === v} onClick={() => { patch(menu.id, s => ({ ...s, status: v })); setMenu(null); }}>
               <span className="dot" style={{ background: v === "active" ? "var(--accent)" : "var(--ink-4)" }} />{v === "active" ? "Active — monitoring" : "Paused — stopped"}
             </button>
           ))}
           {menu.field === "voice" && VOICES.map(v => (
-            <button key={v} className="pop-item" data-on={activeScout.personality.voice === v} onClick={() => { patch(menu.id, s => ({ ...s, personality: { ...s.personality, voice: v } })); setMenu(null); }}>{v}</button>
+            <button key={v} className="pop-item" data-on={activeAgent.personality.voice === v} onClick={() => { patch(menu.id, s => ({ ...s, personality: { ...s.personality, voice: v } })); setMenu(null); }}>{v}</button>
           ))}
           {menu.field === "language" && <div style={{ maxHeight: 250, overflowY: "auto" }}>{LANGUAGES.map(v => (
-            <button key={v} className="pop-item" data-on={activeScout.personality.language === v} onClick={() => { patch(menu.id, s => ({ ...s, personality: { ...s.personality, language: v } })); setMenu(null); }}>{v}</button>
+            <button key={v} className="pop-item" data-on={activeAgent.personality.language === v} onClick={() => { patch(menu.id, s => ({ ...s, personality: { ...s.personality, language: v } })); setMenu(null); }}>{v}</button>
           ))}</div>}
           {menu.field === "cadence" && CADENCES.map(c => (
-            <button key={c.label} className="pop-item" data-on={activeScout.schedule.frequency === c.label} onClick={() => { patch(menu.id, s => ({ ...s, schedule: { ...s.schedule, frequency: c.label, times: c.times, intervalMinutes: c.intervalMinutes, enabled: true } })); setMenu(null); }}>
+            <button key={c.label} className="pop-item" data-on={activeAgent.schedule.frequency === c.label} onClick={() => { patch(menu.id, s => ({ ...s, schedule: { ...s.schedule, frequency: c.label, times: c.times, intervalMinutes: c.intervalMinutes, enabled: true } })); setMenu(null); }}>
               <span style={{ flex: 1 }}>{c.label}</span><span style={{ fontSize: "0.72rem", color: "var(--ink-4)" }}>{c.times.join(" · ")}</span>
             </button>
           ))}
@@ -354,7 +354,7 @@ export default function Dashboard() {
                 { key: "telegram" as const, name: "Telegram", icon: I.tg, color: "var(--info)", handle: "@you" },
                 { key: "whatsapp" as const, name: "WhatsApp", icon: I.wa, color: "var(--accent)", handle: "coming soon" },
               ]).map(ch => {
-                const p = activeScout.platforms.find(x => x.platform === ch.key);
+                const p = activeAgent.platforms.find(x => x.platform === ch.key);
                 const onx = !!p?.connected;
                 const soon = ch.key === "whatsapp";
                 return (

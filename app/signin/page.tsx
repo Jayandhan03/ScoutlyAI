@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/Logo";
 
 export default function SignIn() {
   const { status } = useSession();
@@ -19,7 +20,7 @@ export default function SignIn() {
     <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "1fr", position: "relative", background: "var(--bg)" }}>
       {/* top bar */}
       <div className="row between container" style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", height: 64, width: "100%" }}>
-        <a href="/" className="row" style={{ gap: 10 }}><span className="mark">S</span><span style={{ fontWeight: 600, letterSpacing: "-0.02em" }}>Scoutly</span></a>
+        <a href="/" className="row" style={{ gap: 10 }}><Logo /><span style={{ fontWeight: 600, letterSpacing: "-0.02em" }}>Leora</span></a>
         <ThemeToggle />
       </div>
 

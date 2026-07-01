@@ -1,7 +1,7 @@
 {
-  "name": "ai_news",
+  "name": "leora",
   "version": "1.0.0",
-  "description": "Here is a simple breakdown of the tech stack you are using for your AI News application:",
+  "description": "Leora — AI agents that brief you by voice, over Telegram, WhatsApp or the app.",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",

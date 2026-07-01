@@ -3,16 +3,16 @@ import type { Metadata } from "next";
 import SessionProvider from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
-  title: "Scoutly — AI agents that brief you by voice",
+  title: "Leora — AI agents that brief you by voice",
   description:
-    "Deploy AI agents that monitor the topics you care about and send you voice-note updates — in your language, voice and cadence — inside the Scoutly app, Telegram or WhatsApp. Built for busy people who need to stay ahead without reading a thing.",
+    "Deploy AI agents that monitor the topics you care about and send you voice-note updates — in your language, voice and cadence — inside the Leora app, Telegram or WhatsApp. Built for busy people who need to stay ahead without reading a thing.",
 };
 
 /* Set the theme before first paint to avoid a flash of the wrong theme. */
 const themeScript = `
 (function () {
   try {
-    var t = localStorage.getItem('scoutly-theme');
+    var t = localStorage.getItem('leora-theme');
     if (t !== 'light' && t !== 'dark') {
       t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }

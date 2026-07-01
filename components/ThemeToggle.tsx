@@ -17,7 +17,7 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
   const toggle = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
-    try { localStorage.setItem("scoutly-theme", next); } catch { /* ignore */ }
+    try { localStorage.setItem("leora-theme", next); } catch { /* ignore */ }
     setTheme(next);
   };
 

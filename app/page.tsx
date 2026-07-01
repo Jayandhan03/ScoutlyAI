@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSession, signIn } from "next-auth/react";
 import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/Logo";
 
 /* ───────────────────────── Icons (single outline family) ───────────────── */
 const I = {
@@ -164,10 +165,10 @@ const PRICING = [
 ];
 
 const FAQ = [
-  { q: "What exactly does Scoutly send me?", a: "A voice note. Your agent reads the web on your topic, writes a concise brief, and delivers it as natural audio — so you can listen instead of read, wherever you are." },
-  { q: "Where do the updates arrive?", a: "Three places: inside the Scoutly app (web today, mobile soon), in Telegram, and in WhatsApp (coming soon). You choose per agent." },
+  { q: "What exactly does Leora send me?", a: "A voice note. Your agent reads the web on your topic, writes a concise brief, and delivers it as natural audio — so you can listen instead of read, wherever you are." },
+  { q: "Where do the updates arrive?", a: "Three places: inside the Leora app (web today, mobile soon), in Telegram, and in WhatsApp (coming soon). You choose per agent." },
   { q: "How much can I customize an agent?", a: "Fully. The topic, the language, the voice and tone, how often it reports, and which channel it uses — every agent is yours to design." },
-  { q: "How is this different from a news app or feed?", a: "Feeds hand you links to read. Scoutly reads for you and talks back — a personal briefing in audio, tuned to you, built for people too busy to scroll." },
+  { q: "How is this different from a news app or feed?", a: "Feeds hand you links to read. Leora reads for you and talks back — a personal briefing in audio, tuned to you, built for people too busy to scroll." },
 ];
 
 /* ───────────────────────── Page ───────────────────────────────────────── */
@@ -181,7 +182,7 @@ export default function Landing() {
       {/* ══ NAV ══ */}
       <header className="glass" style={{ position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid var(--line)" }}>
         <div className="container row between" style={{ height: "var(--nav-h)" }}>
-          <a href="#top" className="row" style={{ gap: 10 }}><span className="mark">S</span><span style={{ fontWeight: 600, fontSize: "0.98rem", letterSpacing: "-0.02em" }}>Scoutly</span></a>
+          <a href="#top" className="row" style={{ gap: 10 }}><Logo /><span style={{ fontWeight: 600, fontSize: "0.98rem", letterSpacing: "-0.02em" }}>Leora</span></a>
           <nav className="home-nav-links row" style={{ gap: 6, position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
             {[["#how", "How it works"], ["#design", "Your agents"], ["#pricing", "Pricing"], ["#faq", "FAQ"]].map(([h, l]) => (
               <a key={h} href={h} className="nav-link" style={{ padding: "7px 12px", borderRadius: "var(--r-sm)" }}>{l}</a>
@@ -208,7 +209,7 @@ export default function Landing() {
             </h1>
 
             <p className="t-lead rise-2" style={{ maxWidth: 620, margin: "0 auto 20px" }}>
-              Scoutly deploys AI agents that monitor whatever you care about — markets, your competitors, your team, your hobbies — and send you <strong style={{ color: "var(--ink)" }}>voice-note updates</strong> in your language and voice, right inside Telegram, WhatsApp or the app.
+              Leora deploys AI agents that monitor whatever you care about — markets, your competitors, your team, your hobbies — and send you <strong style={{ color: "var(--ink)" }}>voice-note updates</strong> in your language and voice, right inside Telegram, WhatsApp or the app.
             </p>
 
             <p className="rise-2 t-muted" style={{ fontSize: "0.85rem", marginBottom: 30 }}>Built for busy, high-performing people who need to stay ahead — hands-free.</p>
@@ -423,7 +424,7 @@ export default function Landing() {
         <div className="container" style={{ padding: "48px 24px 32px" }}>
           <div className="row between wrap" style={{ gap: 24, alignItems: "flex-start" }}>
             <div style={{ maxWidth: 320 }}>
-              <div className="row" style={{ gap: 10, marginBottom: 12 }}><span className="mark">S</span><span style={{ fontWeight: 600, letterSpacing: "-0.02em" }}>Scoutly</span></div>
+              <div className="row" style={{ gap: 10, marginBottom: 12 }}><Logo /><span style={{ fontWeight: 600, letterSpacing: "-0.02em" }}>Leora</span></div>
               <p style={{ fontSize: "0.85rem", color: "var(--ink-3)", lineHeight: 1.6 }}>Deploy AI agents that monitor what matters and brief you by voice — in your app, Telegram or WhatsApp. Made for busy minds.</p>
             </div>
             <div className="row wrap" style={{ gap: 56, alignItems: "flex-start" }}>
@@ -441,7 +442,7 @@ export default function Landing() {
           </div>
           <div className="hairline" style={{ margin: "32px 0 20px" }} />
           <div className="row between wrap" style={{ gap: 12 }}>
-            <span style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>© {new Date().getFullYear()} Scoutly. All rights reserved.</span>
+            <span style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>© {new Date().getFullYear()} Leora. All rights reserved.</span>
             <span style={{ fontSize: "0.8rem", color: "var(--ink-4)" }}>Listen, don&apos;t scroll.</span>
           </div>
         </div>

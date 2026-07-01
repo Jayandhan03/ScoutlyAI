@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/Logo";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard#agents", label: "Agents" },
   { href: "/delivery", label: "Delivery" },
-  { href: "/test-scout", label: "Ask" },
+  { href: "/test-agent", label: "Ask" },
 ];
 
 /** Shared top navigation for the signed-in product surfaces. */
@@ -35,8 +36,8 @@ export default function AppNav() {
       <div className="container between" style={{ height: "var(--nav-h)", display: "flex", alignItems: "center" }}>
         {/* Brand */}
         <Link href="/dashboard" className="row" style={{ gap: 10 }}>
-          <span className="mark">S</span>
-          <span style={{ fontWeight: 600, fontSize: "0.98rem", letterSpacing: "-0.02em", color: "var(--ink)" }}>Scoutly</span>
+          <Logo />
+          <span style={{ fontWeight: 600, fontSize: "0.98rem", letterSpacing: "-0.02em", color: "var(--ink)" }}>Leora</span>
         </Link>
 
         {/* Center links */}

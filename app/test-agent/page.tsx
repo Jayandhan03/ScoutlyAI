@@ -28,14 +28,14 @@ function Waveform({ active }: { active: boolean }) {
 }
 
 const LANGS = [
-  { code: "en", label: "English", speech: "en-US", sample: "Here's your latest audio briefing from Scoutly." },
-  { code: "es", label: "Español", speech: "es-ES", sample: "Aquí tienes tu resumen más reciente de Scoutly." },
-  { code: "hi", label: "हिन्दी", speech: "hi-IN", sample: "यह Scoutly की आपकी ताज़ा ऑडियो ब्रीफ़िंग है।" },
-  { code: "fr", label: "Français", speech: "fr-FR", sample: "Voici votre dernier briefing audio de Scoutly." },
-  { code: "de", label: "Deutsch", speech: "de-DE", sample: "Hier ist dein aktuelles Audio-Briefing von Scoutly." },
-  { code: "pt", label: "Português", speech: "pt-BR", sample: "Aqui está o seu briefing de áudio mais recente da Scoutly." },
-  { code: "ar", label: "العربية", speech: "ar-SA", sample: "إليك أحدث ملخص صوتي من سكاوتلي." },
-  { code: "ja", label: "日本語", speech: "ja-JP", sample: "Scoutlyからの最新の音声ブリーフィングです。" },
+  { code: "en", label: "English", speech: "en-US", sample: "Here's your latest audio briefing from Leora." },
+  { code: "es", label: "Español", speech: "es-ES", sample: "Aquí tienes tu resumen más reciente de Leora." },
+  { code: "hi", label: "हिन्दी", speech: "hi-IN", sample: "यह Leora की आपकी ताज़ा ऑडियो ब्रीफ़िंग है।" },
+  { code: "fr", label: "Français", speech: "fr-FR", sample: "Voici votre dernier briefing audio de Leora." },
+  { code: "de", label: "Deutsch", speech: "de-DE", sample: "Hier ist dein aktuelles Audio-Briefing von Leora." },
+  { code: "pt", label: "Português", speech: "pt-BR", sample: "Aqui está o seu briefing de áudio mais recente da Leora." },
+  { code: "ar", label: "العربية", speech: "ar-SA", sample: "إليك أحدث ملخص صوتي من ليورا." },
+  { code: "ja", label: "日本語", speech: "ja-JP", sample: "Leoraからの最新の音声ブリーフィングです。" },
 ];
 const TONES = [
   { name: "Analytical", rate: 1.0, pitch: 1.0 },

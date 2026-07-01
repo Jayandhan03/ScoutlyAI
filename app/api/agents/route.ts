@@ -3,30 +3,30 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 /**
- * GET /api/scouts — the deployed scouts shown on the dashboard.
+ * GET /api/agents — the deployed agents shown on the dashboard.
  *
- * Tries the FastAPI backend first (GET /api/v1/scouts). If the backend is
+ * Tries the FastAPI backend first (GET /api/v1/agents). If the backend is
  * unreachable or hasn't been wired up yet, it falls back to a local set of
- * dummy scouts so the dashboard always renders. Swap `FALLBACK_SCOUTS` /
+ * dummy agents so the dashboard always renders. Swap `FALLBACK_AGENTS` /
  * remove the try-catch once real per-user persistence is live.
  */
 
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 
-export type ScoutPersonality = {
+export type AgentPersonality = {
   voice: string;
   voiceId?: string;
   language: string;
   toneSummary?: string;
 };
 
-export type ScoutPlatform = {
+export type AgentPlatform = {
   platform: "telegram" | "whatsapp";
   connected: boolean;
   handle?: string | null;
 };
 
-export type ScoutSchedule = {
+export type AgentSchedule = {
   frequency: string;
   intervalMinutes: number;
   times: string[];
@@ -36,13 +36,13 @@ export type ScoutSchedule = {
   lastSentAt?: string | null;
 };
 
-export type ScoutStats = {
+export type AgentStats = {
   briefingsSent: number;
   sourcesTracked: number;
   lastBriefing?: string | null;
 };
 
-export type Scout = {
+export type Agent = {
   id: string;
   name: string;
   icon: string;
@@ -51,16 +51,16 @@ export type Scout = {
   description: string;
   status: "active" | "paused";
   keywords: string[];
-  personality: ScoutPersonality;
-  platforms: ScoutPlatform[];
-  schedule: ScoutSchedule;
-  stats: ScoutStats;
+  personality: AgentPersonality;
+  platforms: AgentPlatform[];
+  schedule: AgentSchedule;
+  stats: AgentStats;
 };
 
-const FALLBACK_SCOUTS: Scout[] = [
+const FALLBACK_AGENTS: Agent[] = [
   {
     id: "finance-markets",
-    name: "Finance Scout",
+    name: "Finance Agent",
     icon: "💹",
     accent: "#34d399",
     niche: "Finance & Markets",
@@ -89,7 +89,7 @@ const FALLBACK_SCOUTS: Scout[] = [
   },
   {
     id: "jobs-careers",
-    name: "Careers Scout",
+    name: "Careers Agent",
     icon: "💼",
     accent: "#4d7fff",
     niche: "Jobs & Careers",
@@ -118,7 +118,7 @@ const FALLBACK_SCOUTS: Scout[] = [
   },
   {
     id: "law-policy",
-    name: "Policy Scout",
+    name: "Policy Agent",
     icon: "⚖️",
     accent: "#8b5cf6",
     niche: "Law & Policy",
@@ -147,7 +147,7 @@ const FALLBACK_SCOUTS: Scout[] = [
   },
   {
     id: "tech-science",
-    name: "Tech Scout",
+    name: "Tech Agent",
     icon: "🧬",
     accent: "#f472b6",
     niche: "Tech & Science",
@@ -177,7 +177,7 @@ const FALLBACK_SCOUTS: Scout[] = [
 ];
 
 /** Normalise the backend's snake_case shape into the camelCase the UI expects. */
-function fromBackend(raw: any): Scout {
+function fromBackend(raw: any): Agent {
   return {
     id: raw.id,
     name: raw.name,
@@ -223,22 +223,22 @@ export async function GET() {
 
   // Try the real backend; fall back to dummy data so the dashboard always works.
   try {
-    const url = `${BACKEND}/api/v1/scouts?email=${encodeURIComponent(session.user.email)}`;
+    const url = `${BACKEND}/api/v1/agents?email=${encodeURIComponent(session.user.email)}`;
     const res = await fetch(url, {
       headers: { "Content-Type": "application/json" },
-      // Never cache scout config — always reflect the latest.
+      // Never cache agent config — always reflect the latest.
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
       const data = await res.json();
-      if (data?.success && Array.isArray(data.scouts) && data.scouts.length) {
-        return NextResponse.json({ success: true, scouts: data.scouts.map(fromBackend), source: "backend" });
+      if (data?.success && Array.isArray(data.agents) && data.agents.length) {
+        return NextResponse.json({ success: true, agents: data.agents.map(fromBackend), source: "backend" });
       }
     }
   } catch {
     // Backend not ready — fall through to dummy data.
   }
 
-  return NextResponse.json({ success: true, scouts: FALLBACK_SCOUTS, source: "placeholder" });
+  return NextResponse.json({ success: true, agents: FALLBACK_AGENTS, source: "placeholder" });
 }

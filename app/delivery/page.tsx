@@ -17,7 +17,7 @@ function AppIcon({ size = 20, color = "currentColor" }: { size?: number; color?:
 }
 
 const STEPS = [
-  { t: "Tap connect", d: "We open a private chat with the Scoutly bot on Telegram." },
+  { t: "Tap connect", d: "We open a private chat with the Leora bot on Telegram." },
   { t: "Press start", d: "One tap links your account — no codes, no phone number." },
   { t: "You're set", d: "Briefings now arrive right in your Telegram chat." },
 ];
@@ -93,7 +93,7 @@ export default function Delivery() {
             {anyConnected ? "Where your voice notes land." : "Get your voice notes in your chat app."}
           </h1>
           <p className="t-lead" style={{ maxWidth: 580 }}>
-            Your agents deliver voice-note updates to three places — the Scoutly app, Telegram and WhatsApp.
+            Your agents deliver voice-note updates to three places — the Leora app, Telegram and WhatsApp.
             {anyConnected ? " Manage or switch channels anytime." : " Connect a chat app to also get them where you already are — it takes about 15 seconds."}
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function Delivery() {
                 <div className="row" style={{ gap: 13 }}>
                   <span className="row center" style={{ width: 44, height: 44, borderRadius: "var(--r-md)", background: "var(--solid)", color: "var(--solid-ink)" }}><AppIcon size={22} /></span>
                   <div>
-                    <div style={{ fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.02em" }}>In the Scoutly app</div>
+                    <div style={{ fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.02em" }}>In the Leora app</div>
                     <div style={{ fontSize: "0.8rem", color: "var(--ink-3)" }}>Your voice-note inbox · web now, mobile soon</div>
                   </div>
                 </div>
@@ -140,7 +140,7 @@ export default function Delivery() {
                     <div className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 16, background: "var(--accent-soft)", borderColor: "var(--accent-line)", boxShadow: "none" }}>
                       <span className="row center" style={{ width: 38, height: 38, borderRadius: "var(--r-sm)", background: "#229ED9", flexShrink: 0 }}><TgIcon size={19} /></span>
                       <div>
-                        <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--accent-ink)" }}>Scoutly bot connected</div>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--accent-ink)" }}>Leora bot connected</div>
                         <div style={{ fontSize: "0.8rem", color: "var(--ink-2)", marginTop: 1 }}>{tgUsername ? <>Delivering to <strong style={{ color: "var(--ink)" }}>@{tgUsername}</strong></> : "Your Telegram account is linked"}</div>
                       </div>
                     </div>
@@ -211,7 +211,7 @@ export default function Delivery() {
             <div className="card" style={{ overflow: "hidden", padding: 0 }}>
               <div className="row" style={{ gap: 10, padding: "14px 16px", borderBottom: "1px solid var(--line)", background: "var(--surface-2)" }}>
                 <span className="row center" style={{ width: 34, height: 34, borderRadius: "50%", background: "#229ED9", flexShrink: 0 }}><TgIcon size={17} /></span>
-                <div><div style={{ fontSize: "0.85rem", fontWeight: 600 }}>Scoutly</div><div style={{ fontSize: "0.72rem", color: "var(--accent-ink)" }}>bot · online</div></div>
+                <div><div style={{ fontSize: "0.85rem", fontWeight: 600 }}>Leora</div><div style={{ fontSize: "0.72rem", color: "var(--accent-ink)" }}>bot · online</div></div>
               </div>
               <div style={{ padding: "18px 16px", display: "flex", flexDirection: "column", gap: 10, minHeight: 200 }}>
                 <div style={{ alignSelf: "flex-start", maxWidth: "88%", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "14px 14px 14px 4px", padding: "11px 13px" }}>
