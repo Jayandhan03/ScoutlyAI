@@ -26,9 +26,9 @@ export default function SignIn() {
       <div className="row center" style={{ padding: 24 }}>
         <div className="rise" style={{ width: "100%", maxWidth: 400 }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <div className="badge badge-accent" style={{ marginBottom: 20 }}><span className="dot dot-live" /> Your intelligence desk</div>
+            <div className="badge badge-accent" style={{ marginBottom: 20 }}><span className="dot dot-live" /> Your AI agents</div>
             <h1 className="t-h2" style={{ marginBottom: 10 }}>Welcome back</h1>
-            <p className="t-2" style={{ fontSize: "0.92rem" }}>Sign in to your analysts and today&apos;s briefings.</p>
+            <p className="t-2" style={{ fontSize: "0.92rem" }}>Sign in to your agents and today&apos;s voice notes.</p>
           </div>
 
           <div className="card" style={{ padding: 28 }}>
@@ -47,7 +47,7 @@ export default function SignIn() {
             </div>
 
             <div className="col" style={{ gap: 10 }}>
-              {["We never sell your data or post on your behalf", "Encrypted in transit and at rest", "Delete your analysts and data anytime"].map(t => (
+              {["We never sell your data or post on your behalf", "Encrypted in transit and at rest", "Delete your agents and data anytime"].map(t => (
                 <div key={t} className="row" style={{ gap: 9 }}>
                   <span className="row center" style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent)", flexShrink: 0 }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>

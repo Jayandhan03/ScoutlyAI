@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import SessionProvider from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
-  title: "Scoutly — Your personal intelligence platform",
+  title: "Scoutly — AI agents that brief you by voice",
   description:
-    "A team of AI analysts that monitor the web for you around the clock — across finance, tech, sports, health and any topic you care about — and deliver calm, personalized briefings.",
+    "Deploy AI agents that monitor the topics you care about and send you voice-note updates — in your language, voice and cadence — inside the Scoutly app, Telegram or WhatsApp. Built for busy people who need to stay ahead without reading a thing.",
 };
 
 /* Set the theme before first paint to avoid a flash of the wrong theme. */

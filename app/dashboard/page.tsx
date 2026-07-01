@@ -35,8 +35,8 @@ const CADENCES: { label: string; times: string[]; intervalMinutes: number }[] = 
 type Field = "status" | "voice" | "language" | "cadence" | "channels";
 type MenuState = { id: string; field: Field; x: number; y: number } | null;
 
-/* Live "analyst is working" verbs */
-const WORK = ["Scanning sources", "Reading", "Cross-checking", "Comparing", "Summarizing", "Detecting trends"];
+/* Live "agent is working" verbs */
+const WORK = ["Scanning sources", "Reading", "Cross-checking", "Detecting trends", "Recording your voice note"];
 
 /* ── Small primitives ── */
 function StatTile({ value, label, live }: { value: string | number; label: string; live?: boolean }) {
@@ -88,7 +88,7 @@ export default function Dashboard() {
       try {
         const res = await fetch("/api/scouts");
         const data = await res.json();
-        if (data.success) setScouts(data.scouts); else setErr(data.error ?? "Could not load analysts.");
+        if (data.success) setScouts(data.scouts); else setErr(data.error ?? "Could not load agents.");
       } catch { setErr("Network error."); }
     })();
   }, [status]);
@@ -152,11 +152,11 @@ export default function Dashboard() {
             <h1 className="t-h2" style={{ marginBottom: 6 }}>Good morning, {first}.</h1>
             <p className="t-2" style={{ fontSize: "0.95rem" }}>
               {summary.active > 0
-                ? <>Your analysts filed <strong style={{ color: "var(--ink)" }}>{summary.briefs}</strong> briefings · <span className="row" style={{ display: "inline-flex", gap: 6, verticalAlign: "middle" }}><span className="dot dot-live" /> <span className="thinking">{WORK[workIdx]} now</span></span></>
-                : "No analysts running yet. Deploy your first to start receiving intelligence."}
+                ? <>Your agents sent <strong style={{ color: "var(--ink)" }}>{summary.briefs}</strong> voice notes · <span className="row" style={{ display: "inline-flex", gap: 6, verticalAlign: "middle" }}><span className="dot dot-live" /> <span className="thinking">{WORK[workIdx]} now</span></span></>
+                : "No agents running yet. Deploy your first to start receiving voice-note updates."}
             </p>
           </div>
-          <Link href="#deploy" className="btn btn-primary">{I.plus()} Deploy analyst</Link>
+          <Link href="#deploy" className="btn btn-primary">{I.plus()} Deploy agent</Link>
         </div>
 
         {/* ── Ask bar ── */}
@@ -166,7 +166,7 @@ export default function Dashboard() {
           style={{ display: "flex", alignItems: "center", gap: 12, padding: "6px 6px 6px 16px", marginBottom: 26 }}
         >
           <span style={{ color: "var(--ink-3)" }}>{I.ask()}</span>
-          <input value={ask} onChange={e => setAsk(e.target.value)} placeholder="Ask your analysts anything — “what changed in AI chips this week?”"
+          <input value={ask} onChange={e => setAsk(e.target.value)} placeholder="Ask your agents anything — “what changed in AI chips this week?”"
             style={{ flex: 1, height: 40, border: "none", background: "none", outline: "none", color: "var(--ink)", fontSize: "0.95rem" }} />
           <span className="kbd" style={{ marginRight: 4 }}>↵</span>
           <button type="submit" className="btn btn-primary btn-sm">Ask</button>
@@ -174,10 +174,10 @@ export default function Dashboard() {
 
         {/* ── Stats ── */}
         <div className="grid rise-1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginBottom: 32 }}>
-          <StatTile value={summary.total} label="Analysts deployed" />
+          <StatTile value={summary.total} label="Agents deployed" />
           <StatTile value={summary.active} label="Working now" live={summary.active > 0} />
           <StatTile value={summary.sources} label="Sources monitored" />
-          <StatTile value={summary.briefs} label="Briefings delivered" />
+          <StatTile value={summary.briefs} label="Voice notes sent" />
         </div>
 
         {/* ── Brief + Live panel ── */}
@@ -205,15 +205,15 @@ export default function Dashboard() {
               </div>
             )) : (
               <div style={{ padding: "40px 22px", textAlign: "center" }}>
-                <p className="t-2" style={{ fontSize: "0.9rem" }}>Your morning brief will appear here once an analyst is running.</p>
+                <p className="t-2" style={{ fontSize: "0.9rem" }}>Your morning brief will appear here once an agent is running.</p>
               </div>
             )}
           </div>
 
-          {/* Live analysts */}
+          {/* Live agents */}
           <div className="card" style={{ overflow: "hidden" }}>
             <div className="row between" style={{ padding: "18px 20px", borderBottom: "1px solid var(--line)" }}>
-              <div className="eyebrow">Analysts at work</div>
+              <div className="eyebrow">Agents at work</div>
               <span className="badge badge-muted">{summary.active} live</span>
             </div>
             <div style={{ padding: "6px 8px" }}>
@@ -240,13 +240,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Analysts management ── */}
+        {/* ── Agents management ── */}
         <div id="deploy" className="row between wrap" style={{ gap: 12, marginBottom: 16, scrollMarginTop: 80 }}>
           <div>
-            <h2 className="t-h3" style={{ marginBottom: 4 }}>Your analysts</h2>
-            <p className="t-muted" style={{ fontSize: "0.85rem" }}>Click any cell to tune an analyst — its voice, language, cadence or delivery.</p>
+            <h2 className="t-h3" style={{ marginBottom: 4 }}>Your agents</h2>
+            <p className="t-muted" style={{ fontSize: "0.85rem" }}>Click any cell to tune an agent — its voice, language, cadence or delivery.</p>
           </div>
-          <Link href="/test-scout" className="btn btn-secondary btn-sm">{I.plus()} New analyst</Link>
+          <Link href="/test-scout" className="btn btn-secondary btn-sm">{I.plus()} New agent</Link>
         </div>
 
         {err && <div className="card" style={{ padding: 16, borderColor: "var(--danger)", color: "var(--danger)", fontSize: "0.85rem", marginBottom: 16 }}>{err}</div>}
@@ -256,17 +256,17 @@ export default function Dashboard() {
         ) : scouts && scouts.length === 0 ? (
           <div className="card" style={{ padding: "56px 24px", textAlign: "center" }}>
             <div className="row center" style={{ width: 52, height: 52, borderRadius: "var(--r-md)", background: "var(--accent-soft)", color: "var(--accent)", margin: "0 auto 16px" }}>{I.bolt()}</div>
-            <div className="t-h3" style={{ marginBottom: 8 }}>Deploy your first analyst</div>
-            <p className="t-2" style={{ maxWidth: 380, margin: "0 auto 20px", fontSize: "0.9rem" }}>Name a topic — a market, a competitor, a hobby — and an AI analyst starts reading the web for you within the minute.</p>
-            <Link href="/test-scout" className="btn btn-primary">{I.plus()} Create an analyst</Link>
+            <div className="t-h3" style={{ marginBottom: 8 }}>Deploy your first agent</div>
+            <p className="t-2" style={{ maxWidth: 380, margin: "0 auto 20px", fontSize: "0.9rem" }}>Name a topic — a market, a competitor, a hobby — and an AI agent starts reading the web for you within the minute.</p>
+            <Link href="/test-scout" className="btn btn-primary">{I.plus()} Create an agent</Link>
           </div>
         ) : (
           <div className="card" style={{ overflow: "hidden", padding: 0 }}>
             <div style={{ overflowX: "auto" }}>
-              <table className="analyst-table">
+              <table className="agent-table">
                 <thead>
                   <tr>
-                    {["Analyst", "Status", "Voice", "Language", "Cadence", "Delivery", "Activity", ""].map(h => <th key={h}>{h}</th>)}
+                    {["Agent", "Status", "Voice", "Language", "Cadence", "Delivery", "Activity", ""].map(h => <th key={h}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -379,13 +379,13 @@ export default function Dashboard() {
         .dash-split { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
         @media (max-width: 860px) { .dash-split { grid-template-columns: 1fr; } }
         .brief-row:hover { background: var(--surface-2); }
-        .analyst-table { width: 100%; min-width: 920px; border-collapse: collapse; }
-        .analyst-table th { text-align: left; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4); padding: 13px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; }
-        .analyst-table th:last-child { text-align: right; }
-        .analyst-table td { padding: 13px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
-        .analyst-table tbody tr:last-child td { border-bottom: none; }
-        .analyst-table tbody tr { transition: background 0.14s var(--ease); }
-        .analyst-table tbody tr:hover { background: var(--surface-2); }
+        .agent-table { width: 100%; min-width: 920px; border-collapse: collapse; }
+        .agent-table th { text-align: left; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-4); padding: 13px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; }
+        .agent-table th:last-child { text-align: right; }
+        .agent-table td { padding: 13px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+        .agent-table tbody tr:last-child td { border-bottom: none; }
+        .agent-table tbody tr { transition: background 0.14s var(--ease); }
+        .agent-table tbody tr:hover { background: var(--surface-2); }
         .editchip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: var(--r-sm); font-size: 0.82rem; font-weight: 500; cursor: pointer; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); transition: border-color .15s var(--ease), transform .1s var(--ease), background .15s var(--ease); }
         .editchip:hover { border-color: var(--line-3); transform: translateY(-1px); }
         .editchip[data-open="true"] { border-color: var(--accent-line); background: var(--accent-soft); }

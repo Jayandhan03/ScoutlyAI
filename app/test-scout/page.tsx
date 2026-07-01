@@ -145,8 +145,8 @@ export default function Ask() {
       <main className="container" style={{ maxWidth: 720, padding: "48px 24px 90px" }}>
         <div className="rise" style={{ marginBottom: 28, textAlign: "center" }}>
           <div className="badge badge-accent" style={{ marginBottom: 16 }}><span className="dot dot-live" /> Live web · on demand</div>
-          <h1 className="t-h1" style={{ marginBottom: 12 }}>Ask, and get a briefing.</h1>
-          <p className="t-lead" style={{ maxWidth: 520, margin: "0 auto" }}>Name any topic. An analyst reads the latest across the web and hands you a studio-quality audio brief — in your language and voice, in seconds.</p>
+          <h1 className="t-h1" style={{ marginBottom: 12 }}>Ask, and get a voice note.</h1>
+          <p className="t-lead" style={{ maxWidth: 520, margin: "0 auto" }}>Name any topic. An agent reads the latest across the web and sends you a studio-quality voice note — in your language and voice, in seconds. It&apos;s exactly what your deployed agents deliver on autopilot.</p>
         </div>
 
         <div className="card card-pad rise-1" style={{ padding: 28 }}>
@@ -218,7 +218,7 @@ export default function Ask() {
               <div className="row" style={{ gap: 12, marginBottom: 16 }}>
                 <span className="row center" style={{ width: 42, height: 42, borderRadius: "var(--r-md)", background: "var(--surface)", border: "1px solid var(--accent-line)", flexShrink: 0, fontSize: 18 }}>🎧</span>
                 <div>
-                  <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--accent-ink)" }}>Your briefing is ready</div>
+                  <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--accent-ink)" }}>Your voice note is ready</div>
                   <div style={{ fontSize: "0.78rem", color: "var(--ink-3)", marginTop: 1 }}>{audioName}</div>
                 </div>
                 <span className="badge badge-accent" style={{ marginLeft: "auto" }}><span className="dot" /> Ready</span>
@@ -236,7 +236,7 @@ export default function Ask() {
               {tgError && <div style={{ marginTop: 12, fontSize: "0.8rem", color: "var(--danger)" }}>{tgError}</div>}
               {!tgConnected && (
                 <Link href="/delivery" className="row center" style={{ marginTop: 12, height: 38, borderRadius: "var(--r-sm)", border: "1px dashed var(--info-line)", color: "var(--info)", fontSize: "0.8rem", fontWeight: 500, gap: 7 }}>
-                  <TgIcon size={13} /> Connect Telegram to send briefings directly
+                  <TgIcon size={13} /> Connect Telegram to send voice notes directly
                 </Link>
               )}
             </div>

@@ -12,6 +12,9 @@ function TgIcon({ size = 20, color = "#fff" }: { size?: number; color?: string }
 function WaIcon({ size = 20, color = "#fff" }: { size?: number; color?: string }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M12.05 0C5.5 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 00-3.48-8.413A11.815 11.815 0 0012.05 0zm6.98 16.813c-.297.833-1.72 1.593-2.363 1.69-.604.09-1.368.128-2.208-.14-.51-.161-1.163-.377-2-.738-3.52-1.52-5.82-5.062-5.996-5.296-.173-.235-1.43-1.9-1.43-3.625s.905-2.573 1.226-2.925c.32-.352.7-.44.934-.44.234 0 .467.002.672.012.215.01.504-.082.788.602.297.703 1.008 2.428 1.096 2.604.09.176.148.383.03.618-.117.235-.176.383-.352.588-.176.204-.37.457-.53.614-.176.176-.36.367-.155.72.205.351.912 1.503 1.958 2.436 1.345 1.2 2.48 1.57 2.832 1.746.352.176.557.147.762-.088.205-.235.878-1.026 1.113-1.378.234-.352.469-.293.792-.176.323.117 2.048.966 2.4 1.142.352.176.586.264.674.41.088.147.088.851-.209 1.684z" /></svg>;
 }
+function AppIcon({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="3" /><path d="M8 8l3 3-3 3M13 15h3" /></svg>;
+}
 
 const STEPS = [
   { t: "Tap connect", d: "We open a private chat with the Scoutly bot on Telegram." },
@@ -87,18 +90,34 @@ export default function Delivery() {
         <div className="rise" style={{ marginBottom: 32 }}>
           <div className="eyebrow" style={{ marginBottom: 14 }}>Delivery channels</div>
           <h1 className="t-h2" style={{ marginBottom: 12, maxWidth: 640 }}>
-            {anyConnected ? "Where your briefings land." : "Connect Scoutly to your chat apps."}
+            {anyConnected ? "Where your voice notes land." : "Get your voice notes in your chat app."}
           </h1>
-          <p className="t-lead" style={{ maxWidth: 560 }}>
-            {anyConnected
-              ? "Manage the channels your analysts deliver to. Add or switch anytime — updates arrive right in your preferred chat app."
-              : "Connect Scoutly to your desired platforms to receive updates directly in your preferred chat app. It takes about 15 seconds."}
+          <p className="t-lead" style={{ maxWidth: 580 }}>
+            Your agents deliver voice-note updates to three places — the Scoutly app, Telegram and WhatsApp.
+            {anyConnected ? " Manage or switch channels anytime." : " Connect a chat app to also get them where you already are — it takes about 15 seconds."}
           </p>
         </div>
 
         <div className="deliver-grid rise-1">
           {/* Left: channels */}
           <div className="col" style={{ gap: 16 }}>
+            {/* In-app inbox — always on */}
+            <div className="card" style={{ padding: 22 }}>
+              <div className="row between">
+                <div className="row" style={{ gap: 13 }}>
+                  <span className="row center" style={{ width: 44, height: 44, borderRadius: "var(--r-md)", background: "var(--solid)", color: "var(--solid-ink)" }}><AppIcon size={22} /></span>
+                  <div>
+                    <div style={{ fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.02em" }}>In the Scoutly app</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--ink-3)" }}>Your voice-note inbox · web now, mobile soon</div>
+                  </div>
+                </div>
+                <span className="badge badge-accent"><span className="dot dot-live" /> Always on</span>
+              </div>
+              <p style={{ fontSize: "0.85rem", color: "var(--ink-2)", lineHeight: 1.6, margin: "16px 0 0" }}>
+                Every agent&apos;s voice notes are saved to your in-app inbox automatically — nothing to set up. Connect a chat app below to also receive them in Telegram or WhatsApp.
+              </p>
+            </div>
+
             {/* Telegram */}
             <div className="card" style={{ overflow: "hidden" }}>
               <div className="row between" style={{ padding: 22, borderBottom: "1px solid var(--line)" }}>
@@ -106,7 +125,7 @@ export default function Delivery() {
                   <span className="row center" style={{ width: 44, height: 44, borderRadius: "var(--r-md)", background: "#229ED9" }}><TgIcon size={22} /></span>
                   <div>
                     <div style={{ fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.02em" }}>Telegram</div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--ink-3)" }}>Audio & text briefings in your chat</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--ink-3)" }}>Voice-note updates in your chat</div>
                   </div>
                 </div>
                 <span className={`badge ${tgConnected ? "badge-accent" : "badge-muted"}`}>
@@ -127,7 +146,7 @@ export default function Delivery() {
                     </div>
                     <div className="row" style={{ gap: 10, marginTop: 14, flexWrap: "wrap" }}>
                       <button onClick={handleTest} disabled={tgTesting} className={`btn ${tgTestSent ? "btn-accent" : "btn-secondary"}`} style={{ flex: 1, minWidth: 160 }}>
-                        {tgTestSent ? "✓ Sent — check Telegram" : tgTesting ? <><span className="spinner" style={{ width: 15, height: 15 }} /> Sending…</> : "Send test briefing"}
+                        {tgTestSent ? "✓ Sent — check Telegram" : tgTesting ? <><span className="spinner" style={{ width: 15, height: 15 }} /> Sending…</> : "Send test voice note"}
                       </button>
                       <button onClick={handleDisconnect} className="btn btn-ghost" style={{ color: "var(--danger)" }}>Disconnect</button>
                     </div>
@@ -173,7 +192,7 @@ export default function Delivery() {
                   <span className="row center" style={{ width: 44, height: 44, borderRadius: "var(--r-md)", background: "#25D366", opacity: 0.9 }}><WaIcon size={22} /></span>
                   <div>
                     <div style={{ fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.02em" }}>WhatsApp</div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--ink-3)" }}>Briefings straight to WhatsApp</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--ink-3)" }}>Voice notes straight to WhatsApp</div>
                   </div>
                 </div>
                 <span className="badge badge-warn"><span className="dot" style={{ background: "var(--warn)" }} /> Coming soon</span>
@@ -196,7 +215,7 @@ export default function Delivery() {
               </div>
               <div style={{ padding: "18px 16px", display: "flex", flexDirection: "column", gap: 10, minHeight: 200 }}>
                 <div style={{ alignSelf: "flex-start", maxWidth: "88%", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "14px 14px 14px 4px", padding: "11px 13px" }}>
-                  <div style={{ fontSize: "0.82rem", lineHeight: 1.5 }}>Good morning. Your Finance analyst found 3 market-moving updates overnight.</div>
+                  <div style={{ fontSize: "0.82rem", lineHeight: 1.5 }}>Good morning. Your Finance agent found 3 market-moving updates overnight — here&apos;s your voice note.</div>
                   <div style={{ fontSize: "0.68rem", color: "var(--ink-4)", textAlign: "right", marginTop: 4 }}>8:00 AM</div>
                 </div>
                 <div style={{ alignSelf: "flex-start", maxWidth: "88%", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 14, padding: "11px 13px" }} className="row">
